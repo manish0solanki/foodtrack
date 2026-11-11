@@ -1,0 +1,13 @@
+{
+  "name": "foodtrack",
+  "private": true,
+  "type": "module",
+  "description": "FoodTrack static site plus one serverless function for AI photo recognition",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
+    "zod": "^4.6.7"
+  }
+}

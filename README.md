@@ -10,6 +10,7 @@ A mobile-first calorie, nutrition and weight-loss tracker. It is a static site (
 - A short coaching tip based on the day so far
 - Water tracker (8 glasses)
 - Add food from a built-in list of ~75 common foods (many Indian dishes), your recent foods, packaged foods from Open Food Facts, a barcode, or a custom entry
+- Take or choose a photo of a meal and let AI estimate the foods, portions and calories; you review and correct before it is logged
 - Choose the portion (servings or grams) and the meal (breakfast, lunch, dinner, snacks)
 - Move between days to review or fill in past days; copy yesterday's meals
 
@@ -33,13 +34,24 @@ python3 -m http.server 8000
 
 Barcode scanning with the camera needs HTTPS and a browser with the BarcodeDetector API (Chrome on Android). Elsewhere, type the barcode number into the search box.
 
+## AI photo recognition setup
+
+The photo feature calls Claude from a small server function (`api/analyze.js`) so the API key never reaches the browser. It works on Vercel:
+
+1. Create an API key at https://console.anthropic.com (API keys) and add some credit.
+2. In the Vercel project: Settings → Environment Variables → add `ANTHROPIC_API_KEY` with that key.
+3. Redeploy the project.
+
+Each photo analysed is billed to that key, so set a monthly spend limit in the Anthropic console. The function only accepts requests from the site's own pages. Without the key, the rest of the app works and the photo screen says it is not set up.
+
 ## Files
 
 - `index.html`, `style.css`, `app.js` — the app
 - `foods.js` — built-in food list (approximate values per serving)
+- `api/analyze.js`, `package.json` — serverless function for photo recognition
 - `sw.js`, `manifest.json`, `icon*.{svg,png}` — installable PWA / offline support
 
 ## Notes
 
-- Nutrition values and calorie targets are estimates, not medical advice.
-- Photo-based AI food recognition is not included: it needs a server-side vision model so that API keys stay off the device. It remains a possible next stage, along with sign-in and cloud sync.
+- Nutrition values, AI photo estimates and calorie targets are estimates, not medical advice.
+- Photos are sent to the server function for analysis and are not stored by the app.
