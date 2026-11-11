@@ -1,90 +1,180 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#111827"><meta name="description" content="FoodTrack - simple calorie and nutrition tracker">
-<link rel="manifest" href="manifest.json"><title>FoodTrack</title>
-<style>
-*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,sans-serif;background:#f5f7fb;color:#172033}
-header{background:#111827;color:#fff;padding:22px 18px 18px;position:sticky;top:0;z-index:5}header h1{margin:0;font-size:25px}header p{margin:5px 0 0;color:#cbd5e1;font-size:13px}
-main{max-width:760px;margin:auto;padding:16px}.card{background:#fff;border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 4px 18px #1118270d}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.stat{background:#f1f5f9;border-radius:14px;padding:13px}.stat b{display:block;font-size:21px}.stat span{font-size:12px;color:#64748b}
-.progress{height:10px;background:#e2e8f0;border-radius:20px;overflow:hidden;margin:12px 0}.progress i{display:block;height:100%;background:#16a34a;width:0}
-h2{font-size:17px;margin:0 0 13px}.macros{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.macro{text-align:center;background:#f8fafc;border-radius:12px;padding:10px}.macro b{display:block}.macro span{font-size:11px;color:#64748b}
-button,input{font:inherit}button{border:0;border-radius:12px;padding:12px 14px;background:#111827;color:white;font-weight:600;cursor:pointer}button.secondary{background:#e2e8f0;color:#172033}button.green{background:#16a34a}.row{display:flex;gap:9px;flex-wrap:wrap}.row>*{flex:1;min-width:120px}input{width:100%;padding:12px;border:1px solid #dbe2ea;border-radius:12px}
-.food{display:flex;justify-content:space-between;gap:12px;align-items:center;border-bottom:1px solid #eef2f7;padding:12px 0}.food:last-child{border-bottom:0}.food small{color:#64748b}
-.empty{color:#64748b;font-size:14px}.pill{display:inline-block;background:#dcfce7;color:#166534;padding:4px 8px;border-radius:99px;font-size:11px;font-weight:700}
-#camera{width:100%;border-radius:14px;background:#0f172a;display:none;max-height:360px;object-fit:cover}.photo-preview{width:100%;max-height:300px;object-fit:contain;border-radius:14px;margin-top:10px;display:none}
-@media(max-width:520px){.stats{grid-template-columns:1fr 1fr 1fr}.macros{grid-template-columns:1fr 1fr}.stat b{font-size:18px}}
-</style></head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="description" content="FoodTrack - calorie, nutrition and weight-loss tracker">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+<title>FoodTrack</title>
+</head>
 <body>
-<header><h1>🥗 FoodTrack</h1><p>Track calories, nutrition and weight — without the guesswork.</p></header>
+<header>
+  <div class="bar">
+    <h1>🥗 FoodTrack</h1>
+    <div class="datenav">
+      <button id="prevDay" class="icon" aria-label="Previous day">‹</button>
+      <button id="dateLabel" class="datelabel" title="Jump to today">Today</button>
+      <button id="nextDay" class="icon" aria-label="Next day">›</button>
+    </div>
+  </div>
+</header>
+
 <main>
-<section class="card"><h2>Today</h2><div class="stats">
-<div class="stat"><b id="remaining">1800</b><span>Calories left</span></div>
-<div class="stat"><b id="consumed">0</b><span>Consumed</span></div>
-<div class="stat"><b id="target">1800</b><span>Daily target</span></div>
-</div><div class="progress"><i id="bar"></i></div>
-<div class="macros"><div class="macro"><b id="protein">0g</b><span>Protein</span></div><div class="macro"><b id="carbs">0g</b><span>Carbs</span></div><div class="macro"><b id="fat">0g</b><span>Fat</span></div><div class="macro"><b id="fiber">0g</b><span>Fiber</span></div></div></section>
+<!-- ───────── TODAY ───────── -->
+<div id="view-today" class="view">
+  <section id="setupBanner" class="card banner" hidden>
+    <div><b>Get your personal calorie target</b><br><span class="muted">Tell FoodTrack your height, weight and goal — it takes 30 seconds.</span></div>
+    <button id="setupBtn" class="green">Set up plan</button>
+  </section>
 
-<section class="card"><h2>📸 Scan your food</h2>
-<p class="empty">Take a photo or choose one from your phone. AI recognition will identify foods and estimate portions; you confirm before anything is logged.</p>
-<div class="row"><button id="cameraBtn" class="green">Open Camera</button><button id="photoBtn" class="secondary">Choose Photo</button></div>
-<video id="camera" autoplay playsinline></video><img id="preview" class="photo-preview">
-<input id="photoInput" type="file" accept="image/*" capture="environment" hidden>
-<div id="photoActions" class="row" style="display:none;margin-top:10px"><button id="analyzeBtn">Analyze Food</button></div>
-</section>
+  <section class="card">
+    <div class="summary">
+      <div id="ring" class="ring"></div>
+      <div class="sumstats">
+        <div><b id="consumed">0</b><span>eaten</span></div>
+        <div><b id="target">0</b><span>target</span></div>
+      </div>
+    </div>
+    <div id="macros" class="macros"></div>
+    <p id="tip" class="tipline"></p>
+  </section>
 
-<section class="card"><h2>🔎 Find packaged food</h2><div class="row"><input id="foodSearch" placeholder="Search food or product"><button id="searchBtn">Search</button></div><div id="results" class="empty" style="margin-top:10px">Search Open Food Facts for packaged-food nutrition.</div></section>
+  <section class="card">
+    <div class="rowhead"><h2>💧 Water</h2>
+      <div class="stepper"><button id="waterMinus" class="secondary icon" aria-label="Remove a glass">−</button><b id="waterCount">0 / 8</b><button id="waterPlus" class="secondary icon" aria-label="Add a glass">+</button></div>
+    </div>
+    <div id="waterDots" class="dots"></div>
+  </section>
 
-<section class="card"><h2>➕ Quick add</h2><div class="row"><input id="mealName" placeholder="Meal name"><input id="mealCal" type="number" min="0" placeholder="Calories"></div><div class="row" style="margin-top:9px"><input id="mealProtein" type="number" min="0" placeholder="Protein g"><input id="mealCarbs" type="number" min="0" placeholder="Carbs g"><input id="mealFat" type="number" min="0" placeholder="Fat g"><input id="mealFiber" type="number" min="0" placeholder="Fiber g"></div><button id="addMeal" style="margin-top:10px">Add meal</button></section>
+  <section class="card">
+    <h2>➕ Add food</h2>
+    <div id="mealChips" class="chips"></div>
+    <input id="q" type="search" autocomplete="off" placeholder="Search food (roti, dal, banana…) or type a barcode">
+    <div id="results" class="results"></div>
+    <div class="row" style="margin-top:10px">
+      <button id="scanBtn" class="secondary" hidden>📷 Scan barcode</button>
+      <button id="customBtn" class="secondary">✏️ Custom food</button>
+    </div>
+  </section>
 
-<section class="card"><h2>🍽️ Today's meals</h2><div id="meals"></div></section>
+  <section class="card">
+    <div class="rowhead"><h2>🍽️ Food log</h2><button id="copyYesterday" class="secondary small" hidden>Copy yesterday</button></div>
+    <div id="meals"></div>
+  </section>
+</div>
 
-<section class="card"><h2>⚖️ Weight</h2><div class="row"><input id="weight" type="number" step="0.1" placeholder="Today's weight (kg)"><button id="saveWeight">Save weight</button></div><div id="weights" style="margin-top:10px"></div></section>
+<!-- ───────── PROGRESS ───────── -->
+<div id="view-progress" class="view" hidden>
+  <section class="card">
+    <h2>⚖️ Weight</h2>
+    <div class="row"><input id="weightIn" type="number" inputmode="decimal" step="0.1" min="20" max="400" placeholder="Weight (kg)"><button id="saveWeight">Save</button></div>
+    <p id="weightFor" class="muted small" style="margin:6px 0 0"></p>
+    <div id="weightTiles" class="tiles"></div>
+    <div id="weightChart" class="chart"></div>
+    <p id="projection" class="tipline"></p>
+    <div id="weightList"></div>
+  </section>
+  <section class="card">
+    <h2>🔥 Calories — last 14 days</h2>
+    <div id="calTiles" class="tiles"></div>
+    <div id="calChart" class="chart"></div>
+  </section>
+</div>
+
+<!-- ───────── PLAN ───────── -->
+<div id="view-plan" class="view" hidden>
+  <section class="card">
+    <h2>🎯 Your plan</h2>
+    <div class="form">
+      <label>Sex<select id="pSex"><option value="f">Female</option><option value="m">Male</option></select></label>
+      <label>Age<input id="pAge" type="number" inputmode="numeric" min="15" max="100" placeholder="years"></label>
+      <label>Height (cm)<input id="pHeight" type="number" inputmode="decimal" min="120" max="230" placeholder="cm"></label>
+      <label>Current weight (kg)<input id="pWeight" type="number" inputmode="decimal" step="0.1" min="30" max="300" placeholder="kg"></label>
+      <label>Goal weight (kg)<input id="pGoal" type="number" inputmode="decimal" step="0.1" min="30" max="300" placeholder="kg"></label>
+      <label>Weight-loss pace<select id="pPace">
+        <option value="0.25">Gentle — 0.25 kg / week</option>
+        <option value="0.5" selected>Steady — 0.5 kg / week</option>
+        <option value="0.75">Faster — 0.75 kg / week</option>
+        <option value="1">Aggressive — 1 kg / week</option>
+      </select></label>
+      <label class="wide">Activity level<select id="pActivity">
+        <option value="1.2">Mostly sitting (desk job, little exercise)</option>
+        <option value="1.375" selected>Lightly active (1–3 workouts / week)</option>
+        <option value="1.55">Moderately active (3–5 workouts / week)</option>
+        <option value="1.725">Very active (6–7 workouts / week)</option>
+      </select></label>
+    </div>
+    <button id="savePlan" class="green" style="margin-top:12px;width:100%">Save plan</button>
+  </section>
+
+  <section class="card">
+    <h2>📊 Your numbers</h2>
+    <div id="planOut"></div>
+    <div class="row" style="margin-top:12px"><input id="manualIn" type="number" inputmode="numeric" min="800" max="6000" placeholder="Custom daily calories (optional)"><button id="manualSet" class="secondary">Set</button></div>
+    <button id="manualClear" class="secondary small" style="margin-top:8px" hidden>Use calculated target</button>
+    <p class="muted small">Estimates use the Mifflin-St Jeor equation. They are a starting point, not medical advice — check with a doctor before a big diet change, especially if you have a health condition, are pregnant or under 18.</p>
+  </section>
+
+  <section class="card">
+    <h2>💾 Your data</h2>
+    <p class="muted small" style="margin-top:0">Everything is stored only on this device. Export a backup now and then.</p>
+    <div class="row"><button id="exportBtn" class="secondary">Export backup</button><button id="importBtn" class="secondary">Import backup</button><button id="resetBtn" class="secondary danger">Erase all</button></div>
+    <input id="importFile" type="file" accept="application/json,.json" hidden>
+  </section>
+</div>
 </main>
-<script>
-const KEY='foodtrack-v1';
-let data=JSON.parse(localStorage.getItem(KEY)||'null')||{target:1800,days:{} ,weights:[]};
-const today=()=>new Date().toISOString().slice(0,10);
-function day(){return data.days[today()]||(data.days[today()]={meals:[]})}
-function save(){localStorage.setItem(KEY,JSON.stringify(data));render()}
-function num(v){return Number(v)||0}
-function render(){
- const d=day(), s=d.meals.reduce((a,m)=>({cal:a.cal+num(m.cal),protein:a.protein+num(m.protein),carbs:a.carbs+num(m.carbs),fat:a.fat+num(m.fat),fiber:a.fiber+num(m.fiber)}),{cal:0,protein:0,carbs:0,fat:0,fiber:0});
- target.textContent=data.target; consumed.textContent=Math.round(s.cal); remaining.textContent=Math.max(0,Math.round(data.target-s.cal));
- bar.style.width=Math.min(100,s.cal/data.target*100)+'%'; protein.textContent=Math.round(s.protein)+'g'; carbs.textContent=Math.round(s.carbs)+'g'; fat.textContent=Math.round(s.fat)+'g'; fiber.textContent=Math.round(s.fiber)+'g';
- meals.innerHTML=d.meals.length?d.meals.map((m,i)=>`<div class="food"><div><b>${esc(m.name)}</b><br><small>${Math.round(m.cal)} kcal · P ${num(m.protein)}g · C ${num(m.carbs)}g · F ${num(m.fat)}g</small></div><button class="secondary" onclick="removeMeal(${i})">×</button></div>`).join(''):'<p class="empty">No meals logged today.</p>';
- weights.innerHTML=data.weights.slice().reverse().slice(0,7).map(w=>`<div class="food"><span>${w.date}</span><b>${w.kg} kg</b></div>`).join('')||'<p class="empty">No weight entries yet.</p>';
-}
-function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function removeMeal(i){day().meals.splice(i,1);save()}
-addMeal.onclick=()=>{if(!mealName.value||!mealCal.value)return alert('Enter meal name and calories.');day().meals.push({name:mealName.value,cal:num(mealCal.value),protein:num(mealProtein.value),carbs:num(mealCarbs.value),fat:num(mealFat.value),fiber:num(mealFiber.value)});mealName.value=mealCal.value=mealProtein.value=mealCarbs.value=mealFat.value=mealFiber.value='';save()};
-saveWeight.onclick=()=>{if(!weight.value)return;data.weights.push({date:today(),kg:num(weight.value)});weight.value='';save()};
 
-async function searchFood(){
- const q=foodSearch.value.trim(); if(!q)return;
- results.textContent='Searching…';
- try{
-  const u='https://world.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(q)+'&search_simple=1&action=process&json=1&page_size=10';
-  const j=await fetch(u).then(r=>r.json());
-  const products=(j.products||[]).filter(p=>p.product_name);
-  results.innerHTML=products.length?products.map(p=>{
-   const n=p.nutriments||{}; const cal=n['energy-kcal_100g']??(num(n.energy_100g)/4.184);
-   return `<div class="food"><div><b>${esc(p.product_name)}</b><br><small>${Math.round(cal||0)} kcal/100g · P ${num(n.proteins_100g)}g · C ${num(n.carbohydrates_100g)}g · F ${num(n.fat_100g)}g</small></div><button onclick='addProduct(${JSON.stringify({name:p.product_name,cal:cal||0,protein:n.proteins_100g,carbs:n.carbohydrates_100g,fat:n.fat_100g,fiber:n.fiber_100g})})'>Add</button></div>`
-  }).join(''):'No matching products found.';
- }catch(e){results.textContent='Could not reach Open Food Facts. Try again.'}
-}
-function addProduct(p){day().meals.push({name:p.name+' (100g)',cal:num(p.cal),protein:num(p.protein),carbs:num(p.carbs),fat:num(p.fat),fiber:num(p.fiber)});save()}
-searchBtn.onclick=searchFood; foodSearch.addEventListener('keydown',e=>e.key==='Enter'&&searchFood());
+<nav class="tabs">
+  <button data-tab="today" class="on"><span>🍽️</span>Today</button>
+  <button data-tab="progress"><span>📈</span>Progress</button>
+  <button data-tab="plan"><span>🎯</span>Plan</button>
+</nav>
 
-let stream=null;
-cameraBtn.onclick=async()=>{
- try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});camera.srcObject=stream;camera.style.display='block';photoActions.style.display='flex';cameraBtn.textContent='Camera ready'}catch(e){alert('Camera permission was denied or unavailable. Use Choose Photo instead.')}
-};
-photoBtn.onclick=()=>photoInput.click();
-photoInput.onchange=()=>{const f=photoInput.files[0];if(!f)return;preview.src=URL.createObjectURL(f);preview.style.display='block';photoActions.style.display='flex'};
-analyzeBtn.onclick=()=>alert('The photo is ready. AI food recognition will be connected in the next backend step. We will never pretend an estimate is an exact measurement.');
-if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
-render();
-</script></body></html>
+<!-- portion sheet -->
+<dialog id="sheet">
+  <h3 id="shName"></h3>
+  <p id="shPer" class="muted small"></p>
+  <div class="qty">
+    <button id="shMinus" class="secondary icon" aria-label="Less">−</button>
+    <input id="shQty" type="number" inputmode="decimal" min="0" step="any">
+    <button id="shPlus" class="secondary icon" aria-label="More">+</button>
+    <span id="shUnit" class="muted"></span>
+  </div>
+  <div id="shMeals" class="chips"></div>
+  <div id="shTotals" class="macros"></div>
+  <div class="row"><button id="shCancel" class="secondary">Cancel</button><button id="shAdd" class="green">Add to log</button></div>
+</dialog>
+
+<!-- custom food -->
+<dialog id="customDlg">
+  <h3>Custom food</h3>
+  <div class="form">
+    <label class="wide">Name<input id="cName" placeholder="e.g. Mum's pulao"></label>
+    <label class="wide">Serving description<input id="cServing" placeholder="e.g. 1 bowl (optional)"></label>
+    <label>Calories<input id="cCal" type="number" inputmode="decimal" min="0" placeholder="kcal"></label>
+    <label>Protein (g)<input id="cProtein" type="number" inputmode="decimal" min="0"></label>
+    <label>Carbs (g)<input id="cCarbs" type="number" inputmode="decimal" min="0"></label>
+    <label>Fat (g)<input id="cFat" type="number" inputmode="decimal" min="0"></label>
+    <label>Fiber (g)<input id="cFiber" type="number" inputmode="decimal" min="0"></label>
+  </div>
+  <p id="cErr" class="err"></p>
+  <div class="row"><button id="cCancel" class="secondary">Cancel</button><button id="cSave" class="green">Continue</button></div>
+</dialog>
+
+<!-- barcode scanner -->
+<dialog id="scanDlg">
+  <h3>Scan a barcode</h3>
+  <video id="scanVideo" autoplay playsinline muted></video>
+  <p id="scanMsg" class="muted small">Point the camera at the barcode on the pack.</p>
+  <button id="scanClose" class="secondary" style="width:100%">Close</button>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="foods.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
