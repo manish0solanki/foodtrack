@@ -513,6 +513,106 @@ $('resetBtn').onclick = () => {
   data = normalise(null); planFormFilled = false; cur = todayStr(); save(); toast('All data erased.');
 };
 
+/* ───────── AI photo recognition ───────── */
+let ph = { image: null, items: [], meal: null, busy: false };
+// Shrink the photo in the browser first: faster upload, cheaper to analyse, and well under the server's size limit.
+async function shrinkPhoto(file, max = 1280) {
+  let src;
+  try { src = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+  catch (e) {
+    src = await new Promise((ok, bad) => { const im = new Image(); im.onload = () => ok(im); im.onerror = bad; im.src = URL.createObjectURL(file); });
+  }
+  const k = Math.min(1, max / Math.max(src.width, src.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round(src.width * k); c.height = Math.round(src.height * k);
+  c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.82);
+}
+function renderPhoto() {
+  const has = !!ph.image, got = ph.items.length > 0;
+  $('phPreview').hidden = !has;
+  if (has) $('phPreview').src = ph.image;
+  $('phCamera').textContent = has ? 'Retake' : 'Take photo';
+  $('phGallery').textContent = has ? 'Choose another' : 'Choose from gallery';
+  $('phCamera').disabled = $('phGallery').disabled = ph.busy;
+  $('phHint').hidden = !has || got;
+  $('phAnalyze').hidden = !has || got;
+  $('phAnalyze').disabled = ph.busy;
+  $('phAnalyze').textContent = ph.busy ? 'Analysing…' : 'Analyze';
+  $('phMeals').hidden = $('phAdd').hidden = !got;
+  $('phMeals').innerHTML = chips(ph.meal);
+  $('phItems').innerHTML = ph.items.map((it, i) =>
+    `<label class="item"><input type="checkbox" data-pi="${i}" ${it.on ? 'checked' : ''}><span class="txt"><b>${esc(it.name)}</b>${it.confidence === 'low' ? '<span class="pill">unsure</span>' : ''}<br>
+     <small>${esc(it.portion)} · P ${r1(it.protein)} · C ${r1(it.carbs)} · F ${r1(it.fat)} g</small></span>
+     <input class="cal" type="number" inputmode="numeric" min="0" data-pc="${i}" value="${Math.round(it.cal)}" aria-label="Calories for ${esc(it.name)}"><small>kcal</small></label>`).join('');
+  updatePhotoTotal();
+}
+function updatePhotoTotal() {
+  const sel = ph.items.filter(it => it.on);
+  $('phAdd').disabled = !sel.length;
+  $('phAdd').textContent = sel.length ? `Add ${fmt(sel.reduce((a, it) => a + it.cal, 0))} kcal` : 'Add selected';
+}
+function openPhoto() {
+  ph = { image: null, items: [], meal, busy: false };
+  $('phStatus').textContent = ''; $('phHint').value = '';
+  renderPhoto(); $('photoDlg').showModal();
+}
+async function photoPicked(input) {
+  const f = input.files[0]; input.value = '';
+  if (!f) return;
+  try { ph.image = await shrinkPhoto(f); ph.items = []; $('phStatus').textContent = ''; }
+  catch (e) { $('phStatus').textContent = 'Could not read that photo. Try another one.'; }
+  renderPhoto();
+}
+async function analysePhoto() {
+  if (!ph.image || ph.busy) return;
+  ph.busy = true; $('phStatus').textContent = 'Looking at your meal… this usually takes 5–20 seconds.'; renderPhoto();
+  let msg = '';
+  try {
+    const r = await fetch('api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: ph.image.split(',')[1], mediaType: 'image/jpeg', hint: $('phHint').value }) });
+    let j = null;
+    try { j = await r.json(); } catch (e) { /* not JSON: the function is not deployed on this host */ }
+    if (!j) msg = 'Photo recognition is not available on this copy of the site. It needs the Vercel deployment with an API key.';
+    else if (!r.ok) msg = j.error || 'The photo could not be analysed. Try again.';
+    else if (!j.isFood || !j.items.length) msg = 'No food found in that photo. Try a clearer picture, or add a description.';
+    else {
+      ph.items = j.items.map(it => ({ ...it, on: true }));
+      msg = 'Estimates can easily be 20–30% off. Untick anything wrong and correct the calories if you know better.' + (j.note ? ' Note: ' + j.note : '');
+    }
+  } catch (e) { msg = 'Could not reach the server. Check your connection and try again.'; }
+  ph.busy = false; $('phStatus').textContent = msg; renderPhoto();
+}
+function addPhotoItems() {
+  const sel = ph.items.filter(it => it.on);
+  if (!sel.length) return;
+  for (const it of sel) {
+    mutDay(cur).meals.push({ name: it.name, meal: ph.meal, note: `${it.portion} · AI estimate`, cal: Math.round(it.cal), protein: r1(it.protein), carbs: r1(it.carbs), fat: r1(it.fat), fiber: r1(it.fiber) });
+    const rec = { name: it.name, serving: it.portion, cal: it.cal, protein: it.protein, carbs: it.carbs, fat: it.fat, fiber: it.fiber };
+    data.recents = [rec].concat(data.recents.filter(x => !(x.name === rec.name && x.serving === rec.serving))).slice(0, 30);
+  }
+  meal = ph.meal; $('photoDlg').close(); save();
+  toast(`Added ${sel.length} item${sel.length > 1 ? 's' : ''} from your photo`);
+}
+$('photoBtn').onclick = openPhoto;
+$('phCamera').onclick = () => $('phCamIn').click();
+$('phGallery').onclick = () => $('phGalIn').click();
+$('phCamIn').onchange = () => photoPicked($('phCamIn'));
+$('phGalIn').onchange = () => photoPicked($('phGalIn'));
+$('phAnalyze').onclick = analysePhoto;
+$('phAdd').onclick = addPhotoItems;
+$('phClose').onclick = () => $('photoDlg').close();
+$('phMeals').onclick = e => { const b = e.target.closest('[data-meal]'); if (b) { ph.meal = b.dataset.meal; $('phMeals').innerHTML = chips(ph.meal); } };
+$('phItems').onchange = e => {
+  const t = e.target;
+  if (t.dataset.pi != null) ph.items[t.dataset.pi].on = t.checked;
+  if (t.dataset.pc != null) {           // correcting the calories scales the macros with it
+    const it = ph.items[t.dataset.pc], cal = Math.max(0, num(t.value)), k = it.cal > 0 ? cal / it.cal : 1;
+    Object.assign(it, { cal, protein: it.protein * k, carbs: it.carbs * k, fat: it.fat * k, fiber: it.fiber * k });
+  }
+  updatePhotoTotal();
+};
+
 let resizeT;
 window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(renderProgress, 150); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });

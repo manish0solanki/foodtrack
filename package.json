@@ -1,0 +1,7 @@
+{
+  "name": "foodtrack",
+  "private": true,
+  "type": "module",
+  "description": "FoodTrack static site plus one serverless function for AI photo recognition",
+  "engines": { "node": ">=20" }
+}

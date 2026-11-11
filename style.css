@@ -129,3 +129,11 @@ dialog .macros b{display:block;font-size:17px}
   .tiles{grid-template-columns:1fr 1fr}
   header h1{font-size:17px}
 }
+
+/* AI photo */
+#phPreview{width:100%;max-height:34vh;object-fit:cover;border-radius:14px;margin-bottom:10px;background:var(--soft)}
+#phStatus:empty{display:none}
+#phItems .item{cursor:pointer}
+#phItems input[type=checkbox]{width:22px;height:22px;flex:none;accent-color:var(--accent);padding:0}
+#phItems .cal{width:78px;padding:8px;text-align:right;flex:none;font-weight:600}
+.pill{display:inline-block;background:var(--soft);color:var(--muted);padding:2px 7px;border-radius:99px;font-size:11px;font-weight:600;margin-left:4px}
