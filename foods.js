@@ -84,6 +84,9 @@ const FOOD_ROWS = [
   ['Papaya', '1 cup (145 g)', 62, 0.7, 16, 0.4, 2.5],
   ['Watermelon', '1 cup (150 g)', 46, 0.9, 11.5, 0.2, 0.6],
   ['Green salad', '1 bowl', 35, 2, 7, 0.3, 2.5],
+  ['Steamed vegetables', '1 katori (150 g)', 60, 3, 11, 0.5, 4.5, 'boiled veggies'],
+  ['Vegetable soup', '1 bowl (250 ml)', 80, 3, 13, 2, 3],
+  ['Dal, plain (no tadka)', '1 katori (150 g)', 115, 7.5, 19, 1, 5, 'boiled lentils'],
   ['Cucumber', '1 medium', 30, 1.3, 7, 0.2, 1, 'kheera']
 ];
 const FOODS = FOOD_ROWS.map(r => ({

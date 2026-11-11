@@ -154,7 +154,7 @@ function renderResults() {
     html = local.map(row).join('');
     if (remote && remote.q === q) {
       html += '<p class="listhead">Packaged foods (Open Food Facts)</p>' +
-        (remote.loading ? '<p class="muted">Searching…</p>' : remote.error ? `<p class="muted">${esc(remote.error)}</p>` : remote.items.map(row).join('') || '<p class="muted">No packaged foods found.</p>');
+        (remote.loading ? '<p class="muted">Searching…</p>' : remote.error ? `<p class="muted">${esc(remote.error)}</p><button class="secondary linkbtn" id="onlineBtn">Try again</button>` : remote.items.map(row).join('') || '<p class="muted">No packaged foods found.</p>');
     } else {
       const barcode = /^\d{8,14}$/.test(q);
       if (!local.length && !barcode) html += '<p class="muted">Not in the built-in list.</p>';
@@ -169,16 +169,21 @@ const OFF_FIELDS = 'product_name,brands,nutriments,serving_quantity';
 function offFood(p) {
   const n = (p && p.nutriments) || {};
   let cal = n['energy-kcal_100g'];
-  if (cal == null && n.energy_100g != null) cal = n.energy_100g / 4.184;
+  const kj = n['energy-kj_100g'] ?? n.energy_100g;
+  if (cal == null && kj != null) cal = kj / 4.184;
   if (!p || !p.product_name || cal == null || !isFinite(+cal)) return null;   // skip products with no calorie data
   const brand = (p.brands || '').split(',')[0].trim();
   return { name: p.product_name.trim() + (brand ? ` (${brand})` : ''), serving: '100 g', per100: true, defG: num(p.serving_quantity) || 100,
     cal: +cal, protein: num(n.proteins_100g), carbs: num(n.carbohydrates_100g), fat: num(n.fat_100g), fiber: num(n.fiber_100g) };
 }
-async function getJson(url) {
-  const ac = new AbortController(), t = setTimeout(() => ac.abort(), 15000);
-  try { const r = await fetch(url, { signal: ac.signal }); if (!r.ok && r.status !== 404) throw new Error(r.status); return await r.json(); }
-  finally { clearTimeout(t); }
+async function getJson(url, tries = 3) {
+  // Open Food Facts is a free service that is sometimes slow or busy, so retry before giving up.
+  for (let i = 1; ; i++) {
+    const ac = new AbortController(), t = setTimeout(() => ac.abort(), 15000);
+    try { const r = await fetch(url, { signal: ac.signal }); if (!r.ok && r.status !== 404) throw new Error(r.status); return await r.json(); }
+    catch (e) { if (i >= tries) throw e; await new Promise(ok => setTimeout(ok, 1500)); }
+    finally { clearTimeout(t); }
+  }
 }
 async function searchOnline() {
   const q = $('q').value.trim().toLowerCase();
@@ -189,7 +194,7 @@ async function searchOnline() {
   try {
     const j = await getJson(`${OFF}/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=20&fields=${OFF_FIELDS}`);
     mine.items = (j.products || []).map(offFood).filter(Boolean).slice(0, 12);
-  } catch (e) { mine.error = 'Could not reach Open Food Facts. Check your connection and try again.'; }
+  } catch (e) { mine.error = 'Open Food Facts did not respond — it is a free service and is sometimes busy. Wait a few seconds and try again, or use “Custom food”.'; mine.retry = true; }
   mine.loading = false;
   if (remote === mine) renderResults();
 }
