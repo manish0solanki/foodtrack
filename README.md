@@ -9,9 +9,11 @@ A mobile-first calorie, nutrition and weight-loss tracker. It is a static site (
 - Protein, carbs, fat and fiber progress against personal targets
 - A short coaching tip based on the day so far
 - Water tracker in litres (250 ml per glass), with a daily goal based on body weight
-- Add food from a built-in list of ~75 common foods (many Indian dishes), your recent foods, packaged foods from Open Food Facts, a barcode, or a custom entry
+- Add food from a built-in list of about 390 foods, mostly Indian dishes with regional names (phulka, golgappa, puliyogare…), your recent foods, packaged foods from Open Food Facts, a barcode, or a custom entry
 - Take or choose a photo of a meal and let AI estimate the foods, portions and calories; you review and correct before it is logged
 - Choose the portion (servings or grams) and the meal (breakfast, lunch, dinner, snacks)
+- Tap a logged item to edit it (name, amount, calories, macros, meal) or delete it
+- Save any meal as a favourite (“My usual breakfast”) and log it again in one tap
 - Move between days to review or fill in past days; copy yesterday's meals
 
 **Progress**
@@ -21,6 +23,7 @@ A mobile-first calorie, nutrition and weight-loss tracker. It is a static site (
 
 **Plan**
 - Personal calorie target from sex, age, height, weight, activity and chosen pace (Mifflin-St Jeor), with a safe minimum of 1200 / 1500 kcal
+- Self-adjusting target: after about two weeks of logging and weigh-ins, the app measures what you really burn (calories eaten minus weight change × 7700 kcal/kg) and tunes the target from that; can be switched off
 - The target adjusts automatically as your logged weight changes; you can also set a custom target
 - Export / import a backup file, or erase all data
 

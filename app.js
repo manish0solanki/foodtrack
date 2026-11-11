@@ -41,6 +41,8 @@ function normalise(d) {
   d.profile = d.profile && typeof d.profile === 'object' ? d.profile : null;
   d.target = num(d.target) || 1800;
   d.manualTarget = num(d.manualTarget) || null;
+  d.adaptive = d.adaptive !== false;
+  d.savedMeals = Array.isArray(d.savedMeals) ? d.savedMeals.filter(m => m && m.name && Array.isArray(m.items)) : [];
   return d;
 }
 let data;
@@ -55,16 +57,41 @@ const totals = meals => meals.reduce((a, m) => { for (const k of ['cal', 'protei
 const latestWeight = () => data.weights.length ? data.weights[data.weights.length - 1].kg : null;
 
 /* ───────── plan maths ───────── */
+// Works out what the body really burns from the last 4 weeks of logs:
+// burn = average calories eaten − (weight change per day × 7700 kcal per kg).
+// Needs 14+ days between first and last weigh-in, 4+ weigh-ins and 10+ fully logged days.
+function measuredBurn(bmr) {
+  const t = todayStr(), ws = data.weights.filter(w => w.date >= addDays(t, -28) && w.date <= t);
+  const out = { ready: false, weighIns: ws.length, days: 0, span: 0 };
+  if (ws.length < 2) return out;
+  const first = ws[0].date, last = ws[ws.length - 1].date, dayNo = d => Math.round((parseDay(d) - parseDay(first)) / 864e5);
+  out.span = dayNo(last);
+  const full = Math.max(800, 0.6 * bmr);            // ignore days that look only partly logged
+  let eaten = 0;
+  for (let d = first; d < last; d = addDays(d, 1)) { const c = totals(getDay(d).meals).cal; if (c >= full) { eaten += c; out.days++; } }
+  if (out.span < 14 || ws.length < 4 || out.days < Math.max(10, 0.6 * out.span)) return out;
+  // least-squares trend line through the weigh-ins, so one odd reading does not swing the result
+  const n = ws.length, xs = ws.map(w => dayNo(w.date)), mx = xs.reduce((a, b) => a + b) / n, my = ws.reduce((a, w) => a + w.kg, 0) / n;
+  const slope = xs.reduce((a, x, i) => a + (x - mx) * (ws[i].kg - my), 0) / xs.reduce((a, x) => a + (x - mx) ** 2, 0);
+  out.intake = eaten / out.days; out.weekly = slope * 7; out.tdee = out.intake - slope * 7700; out.ready = true;
+  return out;
+}
 function plan() {
   const p = data.profile, w = latestWeight() || (p && p.startWeight);
   const r = { cal: data.manualTarget || data.target, auto: false };
   if (p && w) {
     const bmr = 10 * w + 6.25 * p.height - 5 * p.age + (p.sex === 'm' ? 5 : -161);
-    const tdee = bmr * p.activity, floor = p.sex === 'm' ? 1500 : 1200;
+    const formulaTdee = bmr * p.activity, floor = p.sex === 'm' ? 1500 : 1200, m = measuredBurn(bmr);
+    let tdee = formulaTdee;
+    if (data.adaptive && m.ready) {
+      // Trust the measurement more as data builds up, and never stray more than 25% from the formula.
+      const trust = m.span >= 21 ? 0.75 : 0.5, measured = Math.min(formulaTdee * 1.25, Math.max(formulaTdee * 0.75, m.tdee));
+      tdee = formulaTdee * (1 - trust) + measured * trust;
+    }
     const losing = p.goal < w - 0.05;
     const want = losing ? tdee - p.pace * 1100 : tdee;      // 7700 kcal ≈ 1 kg → 1100 kcal/day per kg/week
     const autoCal = Math.round(Math.max(floor, want) / 10) * 10;
-    Object.assign(r, { auto: true, bmr, tdee, losing, floor, floored: want < floor, autoCal, weight: w, bmi: w / (p.height / 100) ** 2 });
+    Object.assign(r, { auto: true, bmr, tdee, formulaTdee, measured: m, adapted: tdee !== formulaTdee, losing, floor, floored: want < floor, autoCal, weight: w, bmi: w / (p.height / 100) ** 2 });
     if (!data.manualTarget) r.cal = autoCal;
     r.weekly = Math.max(0, (tdee - r.cal) * 7 / 7700);
     r.weeks = losing && r.weekly > 0.02 ? (w - p.goal) / r.weekly : null;
@@ -139,8 +166,8 @@ function renderToday() {
   $('meals').innerHTML = d.meals.length ? MEALS.map(([k, label]) => {
     const list = d.meals.map((m, i) => [m, i]).filter(([m]) => m.meal === k);
     if (!list.length) return '';
-    return `<div class="mealhead">${label}<span>${fmt(totals(list.map(x => x[0])).cal)} kcal</span></div>` + list.map(([m, i]) =>
-      `<div class="item"><div class="txt"><b>${esc(m.name)}</b><br><small>${m.note ? esc(m.note) + ' · ' : ''}P ${r1(num(m.protein))} · C ${r1(num(m.carbs))} · F ${r1(num(m.fat))} g</small></div>
+    return `<div class="mealhead"><span class="mh">${label}<button class="secondary small" data-savemeal="${k}">⭐ Save meal</button></span><span>${fmt(totals(list.map(x => x[0])).cal)} kcal</span></div>` + list.map(([m, i]) =>
+      `<div class="item"><div class="txt tap" data-edit="${i}" role="button" tabindex="0" aria-label="Edit ${esc(m.name)}"><b>${esc(m.name)}</b><br><small>${m.note ? esc(m.note) + ' · ' : ''}P ${r1(num(m.protein))} · C ${r1(num(m.carbs))} · F ${r1(num(m.fat))} g</small></div>
        <span class="kc">${fmt(num(m.cal))} kcal</span><button class="secondary icon" data-del="${i}" aria-label="Remove ${esc(m.name)}">×</button></div>`).join('');
   }).join('') : `<p class="muted">Nothing logged ${cur === todayStr() ? 'yet today' : 'on this day'}.</p>`;
 }
@@ -154,19 +181,25 @@ function renderResults() {
   let html = '';
   shown = [];
   const row = f => { shown.push(f); return `<button class="item pick" data-i="${shown.length - 1}"><span class="txt"><b>${esc(f.name)}</b><br><small>${esc(f.serving)} · ${foodLine(f)}</small></span><span class="kc">＋</span></button>`; };
+  const savedRow = ([m, i]) => `<div class="item"><button class="item pick" data-sm="${i}"><span class="txt"><b>⭐ ${esc(m.name)}</b><br><small>${m.items.length} item${m.items.length > 1 ? 's' : ''} · ${fmt(totals(m.items).cal)} kcal · adds to ${MEALS.find(x => x[0] === meal)[1]}</small></span><span class="kc">＋</span></button><button class="secondary icon" data-smdel="${i}" aria-label="Delete saved meal ${esc(m.name)}">×</button></div>`;
+  const saved = data.savedMeals.map((m, i) => [m, i]).filter(([m]) => !q || q.split(/\s+/).every(w => m.name.toLowerCase().includes(w)));
   if (!q) {
-    if (data.recents.length) html = '<p class="listhead">Recent</p>' + data.recents.slice(0, 6).map(row).join('');
+    if (saved.length) html = '<p class="listhead">Saved meals</p>' + saved.slice(0, 8).map(savedRow).join('');
+    if (data.recents.length) html += '<p class="listhead">Recent</p>' + data.recents.slice(0, 6).map(row).join('');
   } else {
+    html = saved.slice(0, 4).map(savedRow).join('');
     const words = q.split(/\s+/), hit = f => words.every(w => (f.keys || f.name.toLowerCase()).includes(w));
     const seen = new Set();
-    const local = data.recents.concat(FOODS).filter(f => hit(f) && !seen.has(f.name + '|' + f.serving) && seen.add(f.name + '|' + f.serving)).slice(0, 10);
-    html = local.map(row).join('');
+    const rank = f => { const n = f.name.toLowerCase(); return n.startsWith(q) ? 0 : n.includes(q) ? 1 : 2; };   // name matches before alias matches
+    const local = data.recents.concat(FOODS).filter(f => hit(f) && !seen.has(f.name + '|' + f.serving) && seen.add(f.name + '|' + f.serving))
+      .map((f, i) => [f, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).slice(0, 12).map(x => x[0]);
+    html += local.map(row).join('');
     if (remote && remote.q === q) {
       html += '<p class="listhead">Packaged foods (Open Food Facts)</p>' +
         (remote.loading ? '<p class="muted">Searching…</p>' : remote.error ? `<p class="muted">${esc(remote.error)}</p><button class="secondary linkbtn" id="onlineBtn">Try again</button>` : remote.items.map(row).join('') || '<p class="muted">No packaged foods found.</p>');
     } else {
       const barcode = /^\d{8,14}$/.test(q);
-      if (!local.length && !barcode) html += '<p class="muted">Not in the built-in list.</p>';
+      if (!local.length && !saved.length && !barcode) html += '<p class="muted">Not in the built-in list.</p>';
       html += `<button class="secondary linkbtn" id="onlineBtn">${barcode ? '🔎 Look up barcode ' + esc(q) : '🌐 Search packaged foods online'}</button>`;
     }
   }
@@ -396,7 +429,7 @@ function renderPlan() {
   const kv = (k, v) => `<div class="kv"><span>${k}</span><b>${v}</b></div>`;
   let h = kv('Daily calorie target', fmt(p.cal) + ' kcal' + (data.manualTarget ? ' (custom)' : ''));
   if (p.auto) {
-    h += kv('Calories you burn per day (TDEE)', fmt(p.tdee) + ' kcal') + kv('Resting metabolism (BMR)', fmt(p.bmr) + ' kcal') +
+    h += kv('Calories you burn per day' + (p.adapted ? ' (from your results)' : ''), fmt(p.tdee) + ' kcal') + kv('Resting metabolism (BMR)', fmt(p.bmr) + ' kcal') +
       kv('Daily deficit', fmt(Math.max(0, p.tdee - p.cal)) + ' kcal') + kv('Expected loss', r1(p.weekly) + ' kg / week');
     if (p.weeks) h += kv('Time to goal', p.weeks < 8 ? `about ${Math.max(1, Math.round(p.weeks))} weeks` : `about ${Math.round(p.weeks / 4.345)} months`);
     const hm = (pr.height / 100) ** 2;
@@ -405,6 +438,9 @@ function renderPlan() {
   h += kv('Protein / Carbs / Fat', `${p.protein} / ${p.carbs} / ${p.fat} g`) + kv('Fiber', `${p.fiber} g`);
   if (!p.auto) h += '<div class="note">Fill in the form above to get a target calculated for your body and goal.</div>';
   else {
+    const m = p.measured;
+    if (p.adapted) h += `<div class="note">📈 <b>Adjusted from your results.</b> Over ${m.span} days you ate about ${fmt(m.intake)} kcal a day and your weight ${Math.abs(m.weekly) < 0.05 ? 'stayed level' : (m.weekly < 0 ? 'fell' : 'rose') + ' by ' + r1(Math.abs(m.weekly)) + ' kg a week'}, which means you burn about ${fmt(m.tdee)} kcal a day. The standard formula alone says ${fmt(p.formulaTdee)}. This is only as accurate as your logging.</div>`;
+    else if (data.adaptive) h += `<div class="note">📈 <b>Self-adjusting target.</b> Once there is enough data, your target is tuned from what you really eat and weigh. In the last 4 weeks you have ${m.weighIns} of 4 weigh-ins (spread over ${m.span} of 14 days) and ${m.days} of 10 fully logged days.</div>`;
     if (p.floored && !data.manualTarget) h += `<div class="note">Your chosen pace would need fewer than ${p.floor} kcal a day, which is too low to eat well. The target is held at ${p.floor} kcal, so expect about ${r1(p.weekly)} kg per week — or raise your activity level.</div>`;
     if (data.manualTarget && data.manualTarget < p.floor) h += `<div class="note">⚠️ A custom target under ${p.floor} kcal is very low. Diets this low should only be followed with medical supervision.</div>`;
     if (pr.goal / (pr.height / 100) ** 2 < 18.5) h += '<div class="note">⚠️ Your goal weight is below the healthy BMI range for your height. Consider a higher goal.</div>';
@@ -412,6 +448,7 @@ function renderPlan() {
   }
   $('planOut').innerHTML = h;
   $('manualClear').hidden = !(data.manualTarget && p.auto);
+  $('adaptiveOn').checked = data.adaptive;
 }
 
 function savePlan() {
@@ -448,14 +485,77 @@ $('dateLabel').onclick = () => { cur = todayStr(); render(); };
 $('waterPlus').onclick = () => { mutDay(cur).water++; save(); };
 $('waterMinus').onclick = () => { const d = mutDay(cur); d.water = Math.max(0, d.water - 1); save(); };
 
-$('mealChips').onclick = e => { const b = e.target.closest('[data-meal]'); if (b) { meal = b.dataset.meal; $('mealChips').innerHTML = chips(meal); } };
+$('mealChips').onclick = e => { const b = e.target.closest('[data-meal]'); if (b) { meal = b.dataset.meal; $('mealChips').innerHTML = chips(meal); renderResults(); } };
 $('q').oninput = renderResults;
 $('q').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); if (shown.length === 1) openSheet(shown[0]); else searchOnline(); } };
 $('results').onclick = e => {
   if (e.target.closest('#onlineBtn')) return searchOnline();
+  const del = e.target.closest('[data-smdel]'), sm = e.target.closest('[data-sm]');
+  if (del) { const m = data.savedMeals[del.dataset.smdel]; if (confirm(`Delete the saved meal “${m.name}”?`)) { data.savedMeals.splice(+del.dataset.smdel, 1); save(); } return; }
+  if (sm) {
+    const m = data.savedMeals[sm.dataset.sm];
+    mutDay(cur).meals.push(...m.items.map(it => ({ ...it, meal })));
+    $('q').value = ''; save(); return toast(`Added “${m.name}” (${fmt(totals(m.items).cal)} kcal)`);
+  }
   const b = e.target.closest('[data-i]'); if (b) openSheet(shown[b.dataset.i]);
 };
-$('meals').onclick = e => { const b = e.target.closest('[data-del]'); if (b) { mutDay(cur).meals.splice(+b.dataset.del, 1); save(); } };
+$('meals').onclick = e => {
+  const b = e.target.closest('[data-del]'), ed = e.target.closest('[data-edit]'), sv = e.target.closest('[data-savemeal]');
+  if (b) { mutDay(cur).meals.splice(+b.dataset.del, 1); save(); }
+  else if (sv) openSaveMeal(sv.dataset.savemeal);
+  else if (ed) openEdit(+ed.dataset.edit);
+};
+$('meals').onkeydown = e => { if (e.key === 'Enter' && e.target.dataset.edit != null) openEdit(+e.target.dataset.edit); };
+
+/* ───────── edit a logged item ───────── */
+const EDIT_FIELDS = [['edCal', 'cal'], ['edProtein', 'protein'], ['edCarbs', 'carbs'], ['edFat', 'fat'], ['edFiber', 'fiber']];
+const FACTORS = [[0.5, '½'], [1, 'Same'], [1.5, '1½×'], [2, '2×']];
+let ed = null;
+function openEdit(i) {
+  const m = getDay(cur).meals[i]; if (!m) return;
+  ed = { i, orig: { ...m }, meal: m.meal, factor: 1 };
+  $('edName').value = m.name; $('edErr').textContent = '';
+  fillEdit(); $('editDlg').showModal();
+}
+function fillEdit() {
+  for (const [id, k] of EDIT_FIELDS) $(id).value = k === 'cal' ? Math.round(num(ed.orig[k]) * ed.factor) : r1(num(ed.orig[k]) * ed.factor);
+  $('edFactor').innerHTML = FACTORS.map(([f, label]) => `<button data-f="${f}" class="${f === ed.factor ? 'on' : ''}">${label}</button>`).join('');
+  $('edMeals').innerHTML = chips(ed.meal);
+}
+$('edFactor').onclick = e => { const b = e.target.closest('[data-f]'); if (b) { ed.factor = +b.dataset.f; fillEdit(); } };
+$('edMeals').onclick = e => { const b = e.target.closest('[data-meal]'); if (b) { ed.meal = b.dataset.meal; $('edMeals').innerHTML = chips(ed.meal); } };
+$('edCancel').onclick = () => $('editDlg').close();
+$('edDelete').onclick = () => { mutDay(cur).meals.splice(ed.i, 1); $('editDlg').close(); save(); };
+$('edSave').onclick = () => {
+  const name = $('edName').value.trim();
+  if (!name || $('edCal').value === '') return $('edErr').textContent = 'Enter a name and the calories.';
+  const m = mutDay(cur).meals[ed.i];
+  m.name = name; m.meal = ed.meal;
+  for (const [id, k] of EDIT_FIELDS) m[k] = k === 'cal' ? Math.round(Math.max(0, num($(id).value))) : r1(Math.max(0, num($(id).value)));
+  if (ed.factor !== 1) {      // keep the portion text in step: "1 × 1 katori" becomes "2 × 1 katori", "150 g" becomes "300 g"
+    const note = ed.orig.note || '1 × serving', qty = note.match(/^([\d.]+)( × .*| g)$/);
+    m.note = qty ? r1(num(qty[1]) * ed.factor) + qty[2] : `${ed.factor} × (${note})`;
+  }
+  $('editDlg').close(); save(); toast('Updated.');
+};
+
+/* ───────── saved meals ───────── */
+let savingMeal = null;
+function openSaveMeal(k) {
+  savingMeal = k;
+  const items = getDay(cur).meals.filter(m => m.meal === k);
+  $('smName').value = 'My usual ' + MEALS.find(x => x[0] === k)[1].toLowerCase().replace(/s$/, '');
+  $('smInfo').textContent = `${items.length} item${items.length > 1 ? 's' : ''}, ${fmt(totals(items).cal)} kcal: ${items.map(m => m.name).join(', ')}`;
+  $('smErr').textContent = ''; $('saveMealDlg').showModal(); $('smName').select();
+}
+$('smCancel').onclick = () => $('saveMealDlg').close();
+$('smSave').onclick = () => {
+  const name = $('smName').value.trim();
+  if (!name) return $('smErr').textContent = 'Give the meal a name.';
+  const items = getDay(cur).meals.filter(m => m.meal === savingMeal).map(({ meal: _, ...it }) => it);
+  data.savedMeals = [{ name, items }].concat(data.savedMeals.filter(m => m.name.toLowerCase() !== name.toLowerCase())).slice(0, 40);
+  $('saveMealDlg').close(); save(); toast(`Saved “${name}”. Find it under Add food.`);
+};
 $('copyYesterday').onclick = () => {
   mutDay(cur).meals = getDay(addDays(cur, -1)).meals.map(m => ({ ...m }));
   save(); toast('Copied yesterday’s meals — remove anything you did not eat.');
@@ -499,6 +599,7 @@ $('manualSet').onclick = () => {
   data.manualTarget = v; $('manualIn').value = ''; save(); toast('Custom target set.');
 };
 $('manualClear').onclick = () => { data.manualTarget = null; save(); };
+$('adaptiveOn').onchange = () => { data.adaptive = $('adaptiveOn').checked; save(); };
 
 $('exportBtn').onclick = () => {
   const a = document.createElement('a');
