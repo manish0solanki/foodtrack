@@ -36,13 +36,15 @@ Barcode scanning with the camera needs HTTPS and a browser with the BarcodeDetec
 
 ## AI photo recognition setup
 
-The photo feature calls Claude from a small server function (`api/analyze.js`) so the API key never reaches the browser. It works on Vercel:
+The photo feature calls a Moonshot (Kimi) vision model from a small server function (`api/analyze.js`) so the API key never reaches the browser. It works on Vercel:
 
-1. Create an API key at https://console.anthropic.com (API keys) and add some credit.
-2. In the Vercel project: Settings → Environment Variables → add `ANTHROPIC_API_KEY` with that key.
+1. Create an API key at https://platform.moonshot.ai and make sure the account has credit.
+2. In the Vercel project: Settings → Environment Variables → add `MOONSHOT_API_KEY` with that key.
 3. Redeploy the project.
 
-Each photo analysed is billed to that key, so set a monthly spend limit in the Anthropic console. The function only accepts requests from the site's own pages. Without the key, the rest of the app works and the photo screen says it is not set up.
+Optional variables: `MOONSHOT_MODEL` (default `kimi-k3`) and `MOONSHOT_BASE_URL` (default `https://api.moonshot.ai/v1`; keys from the China platform need `https://api.moonshot.cn/v1`).
+
+Each photo analysed is billed to that key. The function only accepts requests from the site's own pages. Without the key, the rest of the app works and the photo screen says it is not set up.
 
 ## Files
 
