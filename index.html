@@ -116,6 +116,7 @@
   <section class="card">
     <h2>📊 Your numbers</h2>
     <div id="planOut"></div>
+    <label class="check"><input type="checkbox" id="adaptiveOn"> Adjust my target from my real results (needs about 2 weeks of logging and weigh-ins)</label>
     <div class="row" style="margin-top:12px"><input id="manualIn" type="number" inputmode="numeric" min="800" max="6000" placeholder="Custom daily calories (optional)"><button id="manualSet" class="secondary">Set</button></div>
     <button id="manualClear" class="secondary small" style="margin-top:8px" hidden>Use calculated target</button>
     <p class="muted small">Estimates use the Mifflin-St Jeor equation. They are a starting point, not medical advice — check with a doctor before a big diet change, especially if you have a health condition, are pregnant or under 18.</p>
@@ -149,6 +150,32 @@
   <div id="shMeals" class="chips"></div>
   <div id="shTotals" class="macros"></div>
   <div class="row"><button id="shCancel" class="secondary">Cancel</button><button id="shAdd" class="green">Add to log</button></div>
+</dialog>
+
+<!-- edit a logged item -->
+<dialog id="editDlg">
+  <h3>Edit item</h3>
+  <div class="form">
+    <label class="wide">Name<input id="edName"></label>
+    <div class="wide lbl">Amount eaten, compared with what is logged<div id="edFactor" class="chips" style="margin:2px 0 0"></div></div>
+    <label>Calories<input id="edCal" type="number" inputmode="decimal" min="0"></label>
+    <label>Protein (g)<input id="edProtein" type="number" inputmode="decimal" min="0"></label>
+    <label>Carbs (g)<input id="edCarbs" type="number" inputmode="decimal" min="0"></label>
+    <label>Fat (g)<input id="edFat" type="number" inputmode="decimal" min="0"></label>
+    <label>Fiber (g)<input id="edFiber" type="number" inputmode="decimal" min="0"></label>
+  </div>
+  <div id="edMeals" class="chips" style="margin-top:12px"></div>
+  <p id="edErr" class="err"></p>
+  <div class="row"><button id="edDelete" class="secondary danger">Delete</button><button id="edCancel" class="secondary">Cancel</button><button id="edSave" class="green">Save</button></div>
+</dialog>
+
+<!-- save a meal for reuse -->
+<dialog id="saveMealDlg">
+  <h3>⭐ Save this meal</h3>
+  <p id="smInfo" class="muted small"></p>
+  <div class="form"><label class="wide">Name<input id="smName" maxlength="40"></label></div>
+  <p id="smErr" class="err"></p>
+  <div class="row"><button id="smCancel" class="secondary">Cancel</button><button id="smSave" class="green">Save meal</button></div>
 </dialog>
 
 <!-- custom food -->
