@@ -541,8 +541,8 @@ function renderPhoto() {
   const has = !!ph.image, got = ph.items.length > 0;
   $('phPreview').hidden = !has;
   if (has) $('phPreview').src = ph.image;
-  $('phCamera').textContent = has ? 'Retake' : 'Take photo';
-  $('phGallery').textContent = has ? 'Choose another' : 'Choose from gallery';
+  $('phCamera').textContent = has ? '📷 Retake' : '📷 Camera';
+  $('phGallery').textContent = has ? '🖼️ Another' : '🖼️ Gallery';
   $('phCamera').disabled = $('phGallery').disabled = ph.busy;
   $('phHint').hidden = !has || got;
   $('phAnalyze').hidden = !has || got;

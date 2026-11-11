@@ -137,3 +137,9 @@ dialog .macros b{display:block;font-size:17px}
 #phItems input[type=checkbox]{width:22px;height:22px;flex:none;accent-color:var(--accent);padding:0}
 #phItems .cal{width:78px;padding:8px;text-align:right;flex:none;font-weight:600}
 .pill{display:inline-block;background:var(--soft);color:var(--muted);padding:2px 7px;border-radius:99px;font-size:11px;font-weight:600;margin-left:4px}
+dialog > div.row:last-of-type{margin-top:14px}
+.row button{white-space:nowrap;padding-left:10px;padding-right:10px}
+.chips{flex-wrap:nowrap}
+.chips button{flex:1.3 1 0;padding:8px 2px;white-space:nowrap;min-width:0;font-size:12.5px}
+.qty{flex-wrap:wrap}
+.qty span{flex-basis:100%;font-size:13px}
