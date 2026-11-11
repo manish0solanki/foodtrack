@@ -15,7 +15,14 @@ const addDays = (s, n) => { const d = parseDay(s); d.setDate(d.getDate() + n); r
 const niceDate = (s, long) => parseDay(s).toLocaleDateString(undefined, long ? { day: 'numeric', month: 'short', year: 'numeric' } : { weekday: 'short', day: 'numeric', month: 'short' });
 
 const MEALS = [['breakfast', 'Breakfast'], ['lunch', 'Lunch'], ['dinner', 'Dinner'], ['snack', 'Snacks']];
-const WATER_GOAL = 8;
+const GLASS_ML = 250;
+// Daily water goal in glasses: about 33 ml per kg of body weight, kept between 1.5 and 4 litres. 2 litres until a weight is known.
+function waterGoal() {
+  const w = latestWeight() || (data.profile && data.profile.startWeight);
+  if (!w) return 8;
+  return Math.round(Math.min(4000, Math.max(1500, w * 33)) / GLASS_ML);
+}
+const litres = glasses => (glasses * GLASS_ML / 1000).toFixed(2).replace(/\.?0+$/, '');
 
 /* ───────── data ───────── */
 function normalise(d) {
@@ -118,9 +125,11 @@ function renderToday() {
     `<div class="macro"><b>${fmt(s[k])}</b> <span>/ ${p[k]} g</span><div class="track"><i style="width:${Math.min(100, s[k] / p[k] * 100)}%"></i></div><span>${label}</span></div>`).join('');
   $('tip').textContent = coachTip(s, p, cur === todayStr());
 
-  $('waterCount').textContent = `${d.water} / ${WATER_GOAL}`;
+  const wGoal = waterGoal(), hasWeight = !!(latestWeight() || (data.profile && data.profile.startWeight));
+  $('waterCount').textContent = `${litres(d.water)} / ${litres(wGoal)} L`;
+  $('waterNote').textContent = `One tap = one ${GLASS_ML} ml glass. ` + (hasWeight ? 'Goal is based on your weight (about 33 ml per kg).' : 'Goal is a standard 2 litres until you set up your plan or log a weight.');
   $('waterMinus').disabled = d.water <= 0;
-  $('waterDots').innerHTML = Array.from({ length: Math.max(WATER_GOAL, d.water) }, (_, i) => `<i class="${i < d.water ? 'on' : ''}"></i>`).join('');
+  $('waterDots').innerHTML = Array.from({ length: Math.max(wGoal, d.water) }, (_, i) => `<i class="${i < d.water ? 'on' : ''}"></i>`).join('');
 
   $('mealChips').innerHTML = chips(meal);
   renderResults();

@@ -8,7 +8,7 @@ A mobile-first calorie, nutrition and weight-loss tracker. It is a static site (
 - Calorie ring showing what is left (or how far over) against your daily target
 - Protein, carbs, fat and fiber progress against personal targets
 - A short coaching tip based on the day so far
-- Water tracker (8 glasses)
+- Water tracker in litres (250 ml per glass), with a daily goal based on body weight
 - Add food from a built-in list of ~75 common foods (many Indian dishes), your recent foods, packaged foods from Open Food Facts, a barcode, or a custom entry
 - Take or choose a photo of a meal and let AI estimate the foods, portions and calories; you review and correct before it is logged
 - Choose the portion (servings or grams) and the meal (breakfast, lunch, dinner, snacks)
