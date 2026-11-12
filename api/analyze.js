@@ -17,6 +17,13 @@ Reply with one JSON object and nothing else, in exactly this shape:
 
 "name" is a short common name. "portion" describes the amount visible in everyday terms. All numbers are for that amount. "confidence" is "low", "medium" or "high": use "low" when the dish is hard to identify or the amount is mostly hidden. "note" is one short sentence on the single thing that would most change the numbers, or an empty string. If the photo contains no food or drink, reply {"is_food": false, "items": [], "note": ""}.`;
 
+const STEPS_SYSTEM = `You read a screenshot from a phone health or fitness app (Samsung Health, Google Fit, Apple Health, a watch app and so on) and report the step count it shows for the day.
+
+Reply with one JSON object and nothing else, in exactly this shape:
+{"found": true, "steps": 4214, "km": 3.16, "kcal": 169}
+
+"steps" is the main daily step total as a plain integer with no separators. Do not report the step goal, a weekly total or an average. "km" is the distance shown, converted to kilometres if it is in miles, or null if no distance is shown. "kcal" is the calories shown for those steps, or null if none is shown. If the image does not show a daily step count, reply {"found": false, "steps": 0, "km": null, "kcal": null}.`;
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST.' });
 
@@ -33,7 +40,8 @@ export default async function handler(req, res) {
   }
 
   const body = typeof req.body === 'string' ? safeJson(req.body) : req.body;
-  const { image, mediaType, hint } = body || {};
+  const { image, mediaType, hint, mode } = body || {};
+  const readSteps = mode === 'steps';
   if (typeof image !== 'string' || !image || !MEDIA_TYPES.includes(mediaType)) return res.status(400).json({ error: 'Send a JPEG, PNG or WebP photo.' });
   if (image.length > MAX_IMAGE_BASE64) return res.status(413).json({ error: 'That photo is too large.' });
   const description = typeof hint === 'string' ? hint.trim().slice(0, 300) : '';
@@ -43,10 +51,10 @@ export default async function handler(req, res) {
     max_tokens: 4000,
     response_format: { type: 'json_object' },
     messages: [
-      { role: 'system', content: SYSTEM },
+      { role: 'system', content: readSteps ? STEPS_SYSTEM : SYSTEM },
       { role: 'user', content: [
         { type: 'image_url', image_url: { url: `data:${mediaType};base64,${image}` } },
-        { type: 'text', text: description ? `The person describes this meal as: ${description}` : 'Estimate the nutrition of this meal.' }
+        { type: 'text', text: readSteps ? 'Read the step count from this screenshot.' : description ? `The person describes this meal as: ${description}` : 'Estimate the nutrition of this meal.' }
       ] }
     ]
   };
@@ -80,6 +88,12 @@ export default async function handler(req, res) {
   }
 
   const out = extractJson(payload?.choices?.[0]?.message?.content);
+  if (readSteps) {
+    if (!out || typeof out.found !== 'boolean') return res.status(502).json({ error: 'The AI returned an incomplete answer. Please try again.' });
+    const steps = Math.round(Number(out.steps) || 0), km = Number(out.km), kcal = Number(out.kcal);
+    const found = out.found && steps > 0 && steps <= 100000;
+    return res.status(200).json({ found, steps: found ? steps : 0, km: found && km > 0 && km < 200 ? Math.round(km * 100) / 100 : null, kcal: found && kcal > 0 && kcal < 10000 ? Math.round(kcal) : null });
+  }
   if (!out || typeof out.is_food !== 'boolean' || !Array.isArray(out.items)) {
     return res.status(502).json({ error: 'The AI returned an incomplete answer. Please try again.' });
   }
