@@ -48,6 +48,7 @@ function normalise(d) {
   d.eatBack = d.eatBack === true;
   d.lastBackup = typeof d.lastBackup === 'string' ? d.lastBackup : null;
   d.backupSnooze = typeof d.backupSnooze === 'string' ? d.backupSnooze : null;
+  d.updatedAt = num(d.updatedAt) || 0;
   const pf = d.prefs && typeof d.prefs === 'object' ? d.prefs : {};
   d.prefs = { diet: ['veg', 'egg', 'nonveg'].includes(pf.diet) ? pf.diet : 'veg', avoid: Array.isArray(pf.avoid) ? pf.avoid : [], dislikes: String(pf.dislikes || '') };
   d.savedMeals = Array.isArray(d.savedMeals) ? d.savedMeals.filter(m => m && m.name && Array.isArray(m.items)) : [];
@@ -55,9 +56,12 @@ function normalise(d) {
 }
 let data;
 try { data = normalise(JSON.parse(localStorage.getItem(KEY))); } catch (e) { data = normalise(null); }
-function save() {
+function storeLocal() {
   try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) { toast('Could not save — storage is full or blocked.'); }
-  render();
+}
+function save() {
+  data.updatedAt = Date.now();        // version stamp used to decide which way cloud backup should copy
+  storeLocal(); schedulePush(); render();
 }
 const getDay = d => data.days[d] || { meals: [], water: 0, steps: 0 };
 const mutDay = d => data.days[d] || (data.days[d] = { meals: [], water: 0, steps: 0 });
@@ -170,7 +174,7 @@ function renderToday() {
   $('setupBanner').hidden = !!data.profile;
   // Remind about backups once there is a week of data and the last backup is two weeks old (or missing).
   const t0 = todayStr(), dayCount = Object.keys(data.days).length, since = data.lastBackup ? Math.round((parseDay(t0) - parseDay(data.lastBackup)) / 864e5) : null;
-  const due = dayCount >= 7 && (since === null || since >= 14) && !(data.backupSnooze && data.backupSnooze > t0);
+  const due = !auth && dayCount >= 7 && (since === null || since >= 14) && !(data.backupSnooze && data.backupSnooze > t0);
   $('backupBanner').hidden = !due;
   if (due) $('backupBannerText').textContent = (since === null ? `You have ${dayCount} days of data and no backup yet.` : `Your last backup was ${since} days ago.`) + ' It only takes a tap.';
   $('ring').innerHTML = ringSvg(s.cal / p.cal, left < 0) +
@@ -503,6 +507,7 @@ function renderPlan() {
   $('manualClear').hidden = !(data.manualTarget && p.auto);
   $('adaptiveOn').checked = data.adaptive;
   renderStore();
+  renderCloud();
 }
 
 function savePlan() {
@@ -824,6 +829,106 @@ $('manualSet').onclick = () => {
 $('manualClear').onclick = () => { data.manualTarget = null; save(); };
 $('adaptiveOn').onchange = () => { data.adaptive = $('adaptiveOn').checked; save(); };
 
+/* ───────── cloud backup (Supabase) ───────── */
+// Signs in with the same accounts as MarketPulse and keeps one private copy of the app data per account.
+// The key below is a publishable key: it is safe in the browser because row-level security only lets a
+// signed-in user read and write their own row.
+const SB_URL = 'https://fzazdrzlemmkqngvpzxj.supabase.co', SB_KEY = 'sb_publishable_PXXly0ZAeBTmXXG7KbPYoA_RB8HqVZq', AUTH_KEY = 'foodtrack-auth';
+let auth = null, cloud = { state: 'idle', at: 0, msg: '' }, pushTimer = null, refreshing = null, syncing = null, lastCheck = 0;
+try { auth = JSON.parse(localStorage.getItem(AUTH_KEY)); } catch (e) { auth = null; }
+const saveAuth = () => { try { auth ? localStorage.setItem(AUTH_KEY, JSON.stringify(auth)) : localStorage.removeItem(AUTH_KEY); } catch (e) { /* storage blocked */ } };
+const isEmptyData = d => !Object.keys(d.days).length && !d.weights.length && !d.profile;
+function setCloud(state, msg = '') { cloud = { state, msg, at: state === 'saved' ? Date.now() : cloud.at }; renderCloud(); }
+
+async function authCall(grant, body) {
+  const r = await fetch(`${SB_URL}/auth/v1/token?grant_type=${grant}`, { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(j.error_description || j.msg || 'Sign-in failed'); e.status = r.status; throw e; }
+  return { access: j.access_token, refresh: j.refresh_token, exp: Date.now() + j.expires_in * 1000, uid: j.user.id, email: j.user.email };
+}
+// A valid access token, refreshed when it is about to expire. Signs out if the session can no longer be renewed.
+async function accessToken() {
+  if (auth.exp - 60000 > Date.now()) return auth.access;
+  refreshing = refreshing || authCall('refresh_token', { refresh_token: auth.refresh })
+    .then(s => { auth = { ...auth, ...s }; saveAuth(); })
+    .catch(e => { if (e.status === 400 || e.status === 401) { auth = null; saveAuth(); renderCloud(); toast('Cloud backup: please sign in again.'); } throw e; })
+    .finally(() => { refreshing = null; });
+  await refreshing;
+  return auth.access;
+}
+async function rest(method, query, body, keepalive) {
+  const r = await fetch(`${SB_URL}/rest/v1/foodtrack_backups${query}`, { method, keepalive,
+    headers: { apikey: SB_KEY, Authorization: 'Bearer ' + await accessToken(), 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: body ? JSON.stringify(body) : undefined });
+  if (!r.ok) throw new Error('Cloud request failed (' + r.status + ')');
+  return method === 'GET' ? r.json() : null;
+}
+async function pushCloud(keepalive) {
+  if (!data.updatedAt) { data.updatedAt = Date.now(); storeLocal(); }
+  await rest('POST', '?on_conflict=user_id', { user_id: auth.uid, data, updated_at: new Date().toISOString() }, keepalive);
+  auth.base = data.updatedAt; saveAuth();
+}
+// Compare this device with the cloud copy and move data whichever way is safe. `base` is the version both sides last agreed on.
+function syncCloud() {
+  if (!auth) return Promise.resolve();
+  if (syncing) { clearTimeout(pushTimer); pushTimer = setTimeout(syncCloud, 2000); return syncing; }     // run again afterwards so newer changes are not missed
+  clearTimeout(pushTimer); pushTimer = null;
+  if (!navigator.onLine) { setCloud('offline'); return Promise.resolve(); }
+  setCloud('saving');
+  syncing = (async () => {
+    try {
+      const rows = await rest('GET', `?select=data&user_id=eq.${auth.uid}`), remote = rows[0] && rows[0].data;
+      const base = auth.base || 0, localAt = data.updatedAt || 0, remoteAt = remote ? remote.updatedAt || 0 : 0;
+      const localChanged = localAt !== base || (!base && !isEmptyData(data)), remoteChanged = !!remote && remoteAt !== base;
+      let useCloud = false;
+      if (remoteChanged && (!localChanged || isEmptyData(data))) useCloud = true;
+      else if (remoteChanged && localChanged) {
+        const n = d => Object.keys(d.days || {}).length, when = t => t ? new Date(t).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : 'unknown';
+        useCloud = !confirm(`This device and your cloud backup are different.\n\nThis device: ${n(data)} day(s) of data, changed ${when(localAt)}\nCloud backup: ${n(remote)} day(s) of data, changed ${when(remoteAt)}\n\nOK = keep THIS DEVICE and overwrite the cloud.\nCancel = use the CLOUD copy on this device.`);
+      }
+      if (useCloud) { data = normalise(remote); auth.base = remoteAt; saveAuth(); planFormFilled = false; storeLocal(); render(); toast('Loaded your data from the cloud.'); }
+      else if (!remote || localChanged) await pushCloud();
+      lastCheck = Date.now(); setCloud('saved');
+    } catch (e) { if (auth) setCloud(navigator.onLine ? 'error' : 'offline', e.message); }
+    finally { syncing = null; }
+  })();
+  return syncing;
+}
+function schedulePush() { if (!auth) return; clearTimeout(pushTimer); pushTimer = setTimeout(syncCloud, 4000); if (cloud.state !== 'saving') setCloud('pending'); }
+
+function renderCloud() {
+  $('cloudOut').hidden = !!auth; $('cloudOn').hidden = !auth;
+  if (!auth) return;
+  const kv = (k, v) => `<div class="kv"><span>${k}</span><b>${v}</b></div>`;
+  const time = cloud.at ? new Date(cloud.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '';
+  const status = { saving: 'Backing up…', pending: 'Changes waiting to back up…', saved: `Backed up at ${time}`, offline: 'Offline — will back up when you are back online',
+    error: 'Could not back up — will try again', idle: 'Checking…' }[cloud.state];
+  $('cloudInfo').innerHTML = kv('Signed in as', esc(auth.email === 'admin@tradesutra.com' ? 'admin' : auth.email)) + kv('Status', status) +
+    '<div class="note">Every change is copied to your account a few seconds after you make it. Sign in on another device to load the same data there.</div>';
+}
+$('cloudIn').onclick = async () => {
+  const login = $('clUser').value.trim(), password = $('clPass').value;
+  if (!login || !password) return $('cloudErr').textContent = 'Enter your username and password.';
+  $('cloudErr').textContent = ''; $('cloudIn').disabled = true; $('cloudIn').textContent = 'Signing in…';
+  try {
+    auth = { ...await authCall('password', { email: login.toLowerCase() === 'admin' ? 'admin@tradesutra.com' : login, password }), base: 0 };
+    saveAuth(); $('clPass').value = ''; renderCloud(); await syncCloud(); render();
+  } catch (e) { $('cloudErr').textContent = e.status === 400 ? 'Wrong username or password.' : navigator.onLine ? 'Could not sign in. Try again.' : 'You are offline.'; }
+  $('cloudIn').disabled = false; $('cloudIn').textContent = 'Sign in and back up';
+};
+$('clPass').onkeydown = e => { if (e.key === 'Enter') $('cloudIn').click(); };
+$('cloudNow').onclick = () => syncCloud();
+$('cloudSignOut').onclick = () => {
+  if (!confirm('Sign out? Your data stays on this device and in the cloud, but new changes will not be backed up until you sign in again.')) return;
+  clearTimeout(pushTimer); auth = null; saveAuth(); cloud = { state: 'idle', at: 0, msg: '' }; render();
+};
+window.addEventListener('online', syncCloud);
+document.addEventListener('visibilitychange', () => {
+  if (!auth) return;
+  if (document.hidden) { if (pushTimer) { clearTimeout(pushTimer); pushTimer = null; pushCloud(true).then(() => setCloud('saved')).catch(() => {}); } }
+  else if (Date.now() - lastCheck > 60000) syncCloud();          // pick up changes made on another device
+});
+
 /* ───────── local storage protection and backups ───────── */
 // Ask the browser to keep this site's data even when the phone is short of space. Browsers grant this
 // without a prompt to sites that are installed or used often; the answer is shown on the Plan tab.
@@ -866,8 +971,9 @@ $('importFile').onchange = async () => {
   } catch (e) { toast('That file is not a FoodTrack backup.'); }
 };
 $('resetBtn').onclick = () => {
-  if (!confirm('Erase all meals, weights and your plan from this device? This cannot be undone.')) return;
-  data = normalise(null); planFormFilled = false; cur = todayStr(); save(); toast('All data erased.');
+  if (!confirm('Erase all meals, weights and your plan from this device? This cannot be undone.' + (auth ? '\n\nYou will be signed out first, so your cloud backup is kept.' : ''))) return;
+  clearTimeout(pushTimer); auth = null; saveAuth();
+  data = normalise(null); planFormFilled = false; cur = todayStr(); save(); toast('All data erased from this device.');
 };
 
 /* ───────── AI photo recognition ───────── */
@@ -976,3 +1082,4 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) rend
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 render();
 protectStorage();
+syncCloud();

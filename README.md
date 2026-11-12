@@ -28,6 +28,7 @@ A mobile-first calorie, nutrition and weight-loss tracker. It is a static site (
 - Self-adjusting target: after about two weeks of logging and weigh-ins, the app measures what you really burn (calories eaten minus weight change × 7700 kcal/kg) and tunes the target from that; can be switched off
 - The target adjusts automatically as your logged weight changes; you can also set a custom target
 - Data stays on the device: the app asks the browser to protect it from automatic clean-up, shows when the last backup was made, and reminds you to save a backup file every two weeks
+- Optional cloud backup: sign in with a MarketPulse account (Supabase Auth) and every change is copied to a private row a few seconds later; signing in on another device loads the data there
 - Export / import a backup file, or erase all data
 
 ## Running it
@@ -57,6 +58,7 @@ Each photo analysed is billed to that key. The function only accepts requests fr
 - `index.html`, `style.css`, `app.js` — the app
 - `foods.js` — built-in food list (approximate values per serving)
 - `api/analyze.js`, `package.json` — serverless function for photo recognition
+- `supabase/foodtrack_backups.sql` — the cloud backup table and its row-level security policies
 - `sw.js`, `manifest.json`, `icon*.{svg,png}` — installable PWA / offline support
 
 ## Notes
