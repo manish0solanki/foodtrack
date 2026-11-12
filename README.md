@@ -12,6 +12,7 @@ A mobile-first calorie, nutrition and weight-loss tracker. It is a static site (
 - Add food from a built-in list of about 390 foods, mostly Indian dishes with regional names (phulka, golgappa, puliyogare…), your recent foods, packaged foods from Open Food Facts, a barcode, or a custom entry
 - Take or choose a photo of a meal and let AI estimate the foods, portions and calories; you review and correct before it is logged
 - Choose the portion (servings or grams) and the meal (breakfast, lunch, dinner, snacks)
+- Meal ideas that fit the calories you have left, for breakfast, lunch, dinner or snacks, filtered by your preferences: vegetarian / veg + egg / non-veg, things to avoid (dairy, wheat, nuts, seafood, red meat) and foods you dislike; one tap logs the whole idea
 - Tap a logged item to edit it (name, amount, calories, macros, meal) or delete it
 - Save any meal as a favourite (“My usual breakfast”) and log it again in one tap
 - Move between days to review or fill in past days; copy yesterday's meals

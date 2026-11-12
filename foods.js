@@ -2,6 +2,7 @@
 // [name, serving, kcal, protein g, carbs g, fat g, fiber g, extra search words (regional names, spellings)]
 const FOOD_ROWS = [
   // ── Rotis and breads ──
+  ['#bread'],
   ['Roti / chapati', '1 medium (40 g)', 105, 3.5, 20, 1.5, 3, 'phulka fulka poli'],
   ['Roti with ghee', '1 medium (40 g)', 130, 3.5, 20, 4, 3, 'chapati phulka'],
   ['Tandoori roti', '1 piece (60 g)', 150, 5, 30, 1.5, 4],
@@ -35,6 +36,7 @@ const FOOD_ROWS = [
   ['Rusk', '2 pieces', 90, 2.5, 16, 2, 0.8, 'toast'],
 
   // ── Rice dishes ──
+  ['#rice'],
   ['White rice, cooked', '1 katori (150 g)', 195, 4, 43, 0.4, 0.6, 'chawal bhaat steamed plain'],
   ['Brown rice, cooked', '1 katori (150 g)', 170, 3.5, 35, 1.3, 2.5],
   ['Jeera rice', '1 katori (150 g)', 215, 4, 40, 4.5, 1, 'cumin'],
@@ -59,6 +61,7 @@ const FOOD_ROWS = [
   ['Poha', '1 plate (150 g)', 230, 5, 40, 6.5, 3, 'pohe aval flattened rice'],
 
   // ── Dals and legumes ──
+  ['#dal'],
   ['Dal tadka', '1 katori (150 g)', 150, 8, 20, 4.5, 5, 'lentils yellow dal'],
   ['Dal fry', '1 katori (150 g)', 160, 8, 20, 5.5, 5],
   ['Dal, plain (no tadka)', '1 katori (150 g)', 115, 7.5, 19, 1, 5, 'boiled lentils'],
@@ -91,6 +94,7 @@ const FOOD_ROWS = [
   ['Tofu, firm', '100 g', 145, 15, 3.5, 9, 2],
 
   // ── Vegetable dishes ──
+  ['#veg'],
   ['Mixed veg sabzi', '1 katori (150 g)', 130, 3.5, 14, 7, 4.5, 'vegetable curry'],
   ['Aloo sabzi', '1 katori (150 g)', 165, 3, 24, 6.5, 3, 'potato batata bhaji'],
   ['Aloo gobi', '1 katori (150 g)', 150, 3.5, 17, 8, 4, 'potato cauliflower'],
@@ -139,6 +143,7 @@ const FOOD_ROWS = [
   ['Manchow soup', '1 bowl (250 ml)', 120, 3, 15, 5, 1.5],
 
   // ── Paneer and dairy ──
+  ['#paneer'],
   ['Paneer', '100 g', 265, 18, 3.5, 20, 0, 'cottage cheese'],
   ['Palak paneer', '1 katori (150 g)', 240, 11, 8, 18, 3],
   ['Paneer butter masala', '1 katori (150 g)', 330, 12, 10, 27, 2, 'paneer makhani'],
@@ -165,6 +170,7 @@ const FOOD_ROWS = [
   ['Khoya', '30 g', 125, 6, 6, 9, 0, 'mawa'],
 
   // ── Chicken, mutton, fish and eggs ──
+  ['#nonveg'],
   ['Chicken curry', '1 katori (150 g)', 220, 20, 6, 13, 1, 'murgh'],
   ['Butter chicken', '1 katori (150 g)', 290, 19, 8, 20, 1, 'murgh makhani'],
   ['Chicken tikka masala', '1 katori (150 g)', 280, 22, 9, 17, 1.5],
@@ -194,6 +200,7 @@ const FOOD_ROWS = [
   ['Bread omelette', '2 slices, 2 eggs', 350, 18, 30, 17, 1.5],
 
   // ── South Indian tiffin ──
+  ['#tiffin'],
   ['Idli', '2 pieces', 120, 4, 24, 0.5, 1.5],
   ['Rava idli', '2 pieces', 190, 5, 30, 5.5, 2],
   ['Idli sambar', '2 idli with sambar', 230, 9, 40, 3.5, 5.5],
@@ -217,6 +224,7 @@ const FOOD_ROWS = [
   ['Tomato chutney', '2 tbsp', 35, 0.7, 4, 2, 1],
 
   // ── Breakfast and regional plates ──
+  ['#plate'],
   ['Besan chilla', '1 piece', 150, 7, 16, 6, 3, 'cheela pudla'],
   ['Moong dal chilla', '1 piece', 130, 8, 17, 3.5, 3.5, 'cheela'],
   ['Oats, cooked', '1 bowl (40 g dry)', 150, 5, 27, 3, 4, 'oatmeal porridge'],
@@ -242,6 +250,7 @@ const FOOD_ROWS = [
   ['Jam', '1 tbsp', 55, 0.1, 14, 0, 0.2],
 
   // ── Street food and snacks ──
+  ['#snack'],
   ['Samosa', '1 piece', 260, 4, 30, 14, 2.5],
   ['Kachori', '1 piece', 220, 4, 24, 12, 2, 'dal kachori'],
   ['Pyaaz kachori', '1 piece', 260, 5, 28, 14, 2.5, 'onion'],
@@ -315,6 +324,7 @@ const FOOD_ROWS = [
   ['Ketchup', '1 tbsp', 17, 0.2, 4.5, 0, 0, 'sauce'],
 
   // ── Sweets ──
+  ['#sweet'],
   ['Gulab jamun', '1 piece', 150, 2, 25, 5, 0.2],
   ['Rasgulla', '1 piece', 110, 2, 23, 1, 0, 'rosogolla'],
   ['Rasmalai', '1 piece', 170, 5, 22, 7, 0],
@@ -352,6 +362,7 @@ const FOOD_ROWS = [
   ['Honey', '1 tsp', 21, 0, 5.7, 0, 0, 'shahad'],
 
   // ── Drinks ──
+  ['#drink'],
   ['Chai with milk and sugar', '1 cup (150 ml)', 90, 2.5, 13, 3, 0, 'tea'],
   ['Chai without sugar', '1 cup (150 ml)', 40, 2.5, 4, 2, 0, 'tea'],
   ['Black / green tea', '1 cup', 2, 0, 0.5, 0, 0],
@@ -387,6 +398,7 @@ const FOOD_ROWS = [
   ['Protein shake with milk', '1 glass', 270, 32, 15, 9, 0, 'whey'],
 
   // ── Fruit, vegetables, nuts ──
+  ['#fruit'],
   ['Banana', '1 medium', 105, 1.3, 27, 0.4, 3.1, 'kela'],
   ['Apple', '1 medium', 95, 0.5, 25, 0.3, 4.4, 'seb'],
   ['Orange', '1 medium', 62, 1.2, 15, 0.2, 3.1, 'santra'],
@@ -419,7 +431,24 @@ const FOOD_ROWS = [
   ['Carrot', '1 medium', 25, 0.6, 6, 0.1, 1.7, 'gajar'],
   ['Onion', '1 medium', 44, 1.2, 10, 0.1, 1.9, 'pyaaz kanda']
 ];
-const FOODS = FOOD_ROWS.map(r => ({
-  name: r[0], serving: r[1], cal: r[2], protein: r[3], carbs: r[4], fat: r[5], fiber: r[6],
-  keys: (r[0] + ' ' + (r[7] || '')).toLowerCase()
-}));
+// Rows like ['#dal'] mark the category of the rows that follow. Tags are worked out from names, so they are a
+// best effort: they cannot know, for example, whether a home recipe uses ghee.
+const TAG_RULES = {
+  dairy: /paneer|curd|dahi|yogurt|milk|doodh|lassi|chaas|raita|cheese|butter|ghee|makhani|malai|cream|khoya|kadhi|\bkheer\b|whey|shake|chai with|coffee with|filter coffee|cold coffee|pizza|white sauce|korma|thandai|tikka masala/,
+  wheat: /roti|chapati|paratha|parotta|\bpuri\b|naan|kulcha|\bpav\b|bread|sandwich|burger|pizza|pasta|noodles|momos|roll|frankie|shawarma|biscuit|rusk|khari|cake|upma|semiya|daliya|suji|rava|bhatur|litti|baati|thepla|mathri|samosa|kachori|thalipeeth|puran poli|khakhra|muthia|dabeli|luchi|muesli/,
+  nuts: /almond|badam|cashew|kaju|walnut|akhrot|pista|peanut|moongphali|chikki|dry fruit|thandai|korma|shahi|malai kofta|muesli/,
+  seafood: /fish|prawn/,
+  redmeat: /mutton|keema|seekh|shami/,
+  fried: /samosa|kachori|pakora|\bpuri\b|aloo puri|luchi|bhatur|vada|bajji|fries|chips|fried|tikki|\bsev\b|namkeen|chakli|mathri|fafda|spring roll|chicken 65|bhaja|manchurian|chilli|fish fry/,
+  alcohol: /beer|whisky|wine/
+};
+let foodCat = '';
+const FOODS = FOOD_ROWS.filter(r => r[0][0] === '#' ? (foodCat = r[0].slice(1), false) : (r.cat = foodCat, true)).map(r => {
+  const keys = (r[0] + ' ' + (r[7] || '')).toLowerCase(), name = r[0].toLowerCase();
+  let has = Object.keys(TAG_RULES).filter(t => TAG_RULES[t].test(t === 'dairy' || t === 'nuts' ? keys : name));
+  if (r.cat === 'bread' && !has.includes('wheat')) has.push('wheat');
+  if (/bajra|jowar|makki|akki|ragi/.test(name)) has = has.filter(t => t !== 'wheat');          // millet, maize and rice rotis
+  if (/peanut butter|soy milk|sol kadhi/.test(name)) has = has.filter(t => t !== 'dairy');
+  const diet = /chicken|mutton|fish|prawn|keema|kebab|shawarma/.test(name) ? 'nonveg' : /\begg|omelette|cake/.test(name) ? 'egg' : 'veg';
+  return { name: r[0], serving: r[1], cal: r[2], protein: r[3], carbs: r[4], fat: r[5], fiber: r[6], keys, cat: r.cat, diet, has };
+});

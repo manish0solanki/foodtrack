@@ -158,3 +158,11 @@ dialog .row > *{min-width:0}
 .form .lbl{font-size:12.5px;color:var(--muted);display:grid;gap:4px;grid-column:1/-1}
 .form .lbl button{color:var(--ink)}
 .form .lbl button.on{color:#fff}
+
+/* meal ideas */
+.chips.wrap{flex-wrap:wrap}
+.chips.wrap button{flex:none;padding:8px 12px}
+.idea .txt{font-size:14px;line-height:1.45}
+.idea .txt small{display:inline-block;margin-top:3px}
+.idea button{flex:none}
+.lblp{font-size:12.5px;color:var(--muted);margin:12px 0 6px}
