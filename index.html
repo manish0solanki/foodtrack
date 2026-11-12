@@ -156,6 +156,23 @@
   </section>
 
   <section class="card">
+    <h2>☁️ Cloud backup</h2>
+    <div id="cloudOut">
+      <p class="muted small" style="margin-top:0">Sign in with your MarketPulse account to back up automatically after every change, and to load your data on another device.</p>
+      <div class="form">
+        <label class="wide">Username or email<input id="clUser" autocomplete="username" autocapitalize="none"></label>
+        <label class="wide">Password<input id="clPass" type="password" autocomplete="current-password"></label>
+      </div>
+      <p id="cloudErr" class="err"></p>
+      <button id="cloudIn" class="green" style="width:100%">Sign in and back up</button>
+    </div>
+    <div id="cloudOn" hidden>
+      <div id="cloudInfo"></div>
+      <div class="row" style="margin-top:12px"><button id="cloudNow" class="secondary">Back up now</button><button id="cloudSignOut" class="secondary">Sign out</button></div>
+    </div>
+  </section>
+
+  <section class="card">
     <h2>💾 Your data</h2>
     <p class="muted small" style="margin-top:0">Everything is stored only on this device, inside this browser. A backup is a file saved to your phone’s Downloads that you can restore later, here or on another device.</p>
     <div id="storeInfo"></div>
