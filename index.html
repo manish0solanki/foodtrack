@@ -64,6 +64,15 @@
   </section>
 
   <section class="card">
+    <div class="rowhead"><h2>💡 Meal ideas</h2><button id="prefBtn" class="secondary small">⚙️ Preferences</button></div>
+    <div id="ideaChips" class="chips"></div>
+    <p id="ideaPrefs" class="muted small" style="margin:0 0 4px"></p>
+    <p id="ideaInfo" class="small" style="margin:0 0 4px"></p>
+    <div id="ideas"></div>
+    <button id="ideaMore" class="secondary linkbtn">🔄 Show other ideas</button>
+  </section>
+
+  <section class="card">
     <div class="rowhead"><h2>🍽️ Food log</h2><button id="copyYesterday" class="secondary small" hidden>Copy yesterday</button></div>
     <div id="meals"></div>
   </section>
@@ -150,6 +159,19 @@
   <div id="shMeals" class="chips"></div>
   <div id="shTotals" class="macros"></div>
   <div class="row"><button id="shCancel" class="secondary">Cancel</button><button id="shAdd" class="green">Add to log</button></div>
+</dialog>
+
+<!-- food preferences for meal ideas -->
+<dialog id="prefDlg">
+  <h3>⚙️ Food preferences</h3>
+  <p class="muted small">Used only for meal ideas. Fried food, sweets and sugary drinks are never suggested.</p>
+  <p class="lblp">I eat</p>
+  <div id="pfDiet" class="chips"></div>
+  <p class="lblp">Avoid (tap all that apply)</p>
+  <div id="pfAvoid" class="chips wrap"></div>
+  <div class="form"><label class="wide">Foods I don't like (separate with commas)<input id="pfDislikes" maxlength="200" placeholder="e.g. karela, mushroom, baingan"></label></div>
+  <p class="muted small">“Avoid” works from dish names, so it can miss hidden ingredients such as ghee in a home recipe. If you have an allergy, always check the dish yourself.</p>
+  <div class="row"><button id="pfCancel" class="secondary">Cancel</button><button id="pfSave" class="green">Save</button></div>
 </dialog>
 
 <!-- edit a logged item -->

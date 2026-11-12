@@ -42,6 +42,8 @@ function normalise(d) {
   d.target = num(d.target) || 1800;
   d.manualTarget = num(d.manualTarget) || null;
   d.adaptive = d.adaptive !== false;
+  const pf = d.prefs && typeof d.prefs === 'object' ? d.prefs : {};
+  d.prefs = { diet: ['veg', 'egg', 'nonveg'].includes(pf.diet) ? pf.diet : 'veg', avoid: Array.isArray(pf.avoid) ? pf.avoid : [], dislikes: String(pf.dislikes || '') };
   d.savedMeals = Array.isArray(d.savedMeals) ? d.savedMeals.filter(m => m && m.name && Array.isArray(m.items)) : [];
   return d;
 }
@@ -160,6 +162,7 @@ function renderToday() {
 
   $('mealChips').innerHTML = chips(meal);
   renderResults();
+  renderIdeas();
 
   const y = getDay(addDays(cur, -1));
   $('copyYesterday').hidden = !(d.meals.length === 0 && y.meals.length);
@@ -567,6 +570,137 @@ $('shPlus').onclick = () => stepQty(1);
 $('shMeals').onclick = e => { const b = e.target.closest('[data-meal]'); if (b) { sheetMeal = b.dataset.meal; renderSheet(); } };
 $('shCancel').onclick = () => $('sheet').close();
 $('shAdd').onclick = addFromSheet;
+
+/* ───────── meal ideas ───────── */
+// Suggests balanced meals from the built-in list that fit the calories left, the person's diet and what they avoid.
+// Fried food, sweets, sugary drinks and alcohol are never suggested.
+const DIETS = [['veg', 'Vegetarian'], ['egg', 'Veg + egg'], ['nonveg', 'Non-veg']];
+const AVOIDS = [['dairy', 'Dairy'], ['wheat', 'Wheat / gluten'], ['nuts', 'Nuts'], ['seafood', 'Seafood'], ['redmeat', 'Red meat']];
+const SHARE = { breakfast: 0.25, lunch: 0.35, dinner: 0.3, snack: 0.1 };
+const NAMES = {
+  rice: ['White rice, cooked', 'Brown rice, cooked', 'Jeera rice'],
+  side: ['Curd / dahi', 'Curd, low-fat', 'Raita', 'Buttermilk / chaas', 'Green salad', 'Kachumber salad'],
+  plateExtra: ['Daliya, savoury', 'Thukpa'],
+  breakfast: ['Poha', 'Besan chilla', 'Moong dal chilla', 'Oats, cooked', 'Masala oats', 'Daliya, savoury', 'Muesli with milk', 'Cornflakes with milk', 'Thepla', 'Dhokla', 'Handvo',
+    'Aloo paratha', 'Gobi paratha', 'Bread omelette', 'Omelette', 'Masala omelette', 'Egg bhurji', 'Boiled egg', 'Sprouts salad', 'Veg sandwich', 'Upma'],
+  breakfastSide: ['Chai without sugar', 'Milk, toned', 'Milk, skimmed', 'Curd / dahi', 'Banana', 'Apple', 'Papaya', 'Orange', 'Boiled egg', 'Sambar', 'Black coffee', 'Almonds', 'Guava'],
+  snack: ['Roasted chana', 'Makhana, roasted', 'Peanuts, roasted', 'Boiled peanuts', 'Sprouts salad', 'Boiled chana', 'Buttermilk / chaas', 'Coconut water', 'Black / green tea', 'Boiled egg',
+    'Corn chaat', 'Roasted corn', 'Sweet potato, boiled', 'Dhokla', 'Khakhra', 'Greek yogurt, plain low-fat', 'Curd / dahi', 'Chai without sugar', 'Vegetable soup', 'Tomato soup',
+    'Chicken soup', 'Kachumber salad', 'Green salad', 'Almonds', 'Walnuts'],
+  light: ['Cucumber', 'Carrot', 'Tomato', 'Green salad', 'Kachumber salad', 'Black / green tea', 'Black coffee', 'Buttermilk / chaas', 'Rasam', 'Jaljeera']
+};
+let ideaMeal = null, ideaList = [], ideaKey = '', ideaShuffle = 0;
+
+function ideaPools() {
+  const pr = data.prefs, rank = { veg: 0, egg: 1, nonveg: 2 };
+  const dislikes = pr.dislikes.toLowerCase().split(/[,\n]+/).map(w => w.trim()).filter(w => w.length > 1);
+  const ok = FOODS.filter(f => rank[f.diet] <= rank[pr.diet] && !f.has.some(t => pr.avoid.includes(t) || t === 'fried' || t === 'alcohol') && !dislikes.some(w => f.keys.includes(w)));
+  const named = list => ok.filter(f => list.includes(f.name));
+  return {
+    roti: ok.filter(f => f.cat === 'bread' && f.fat <= 4.5 && f.cal <= 190 && !/bread|rusk|pav|puran/i.test(f.name)),
+    rice: named(NAMES.rice),
+    protein: ok.filter(f => (f.cat === 'dal' && !/^Soya chunks$|Rasam|Tofu|Sprouts|Boiled/.test(f.name)) || (f.cat === 'paneer' && /paneer/i.test(f.name) && f.name !== 'Paneer' && f.fat <= 21) ||
+      (f.cat === 'nonveg' && f.fat <= 18 && !/Egg white|Bread omelette|soup|Boiled egg/.test(f.name))),
+    veg: ok.filter(f => f.cat === 'veg' && f.fat <= 12 && !/soup/i.test(f.name)),
+    side: named(NAMES.side),
+    plate: ok.filter(f => (f.cat === 'rice' && !NAMES.rice.includes(f.name) && f.name !== 'Poha' && f.fat <= 14) || NAMES.plateExtra.includes(f.name)),
+    breakfast: ok.filter(f => (f.cat === 'tiffin' && !/chutney/i.test(f.name)) || NAMES.breakfast.includes(f.name)),
+    breakfastSide: named(NAMES.breakfastSide),
+    snack: ok.filter(f => (f.cat === 'fruit' && !/Onion|Tomato|Raisins|Fresh coconut/.test(f.name)) || NAMES.snack.includes(f.name)),
+    light: named(NAMES.light)
+  };
+}
+function makeIdeas(kind, budget, P) {
+  const pick = a => a[Math.floor(Math.random() * a.length)], clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const sum = items => items.reduce((a, [f, n]) => a + f.cal * n, 0);
+  const fill = (items, pool, max) => {            // add sides while they fit in the calories left
+    for (let k = 0; k < max; k++) {
+      const gap = budget - sum(items), fits = pool.filter(f => f.cal <= gap && f.cal >= 20 && !items.some(x => x[0] === f));
+      if (gap < 45 || !fits.length) break;
+      items.push([pick(fits), 1]);
+    }
+  };
+  const found = new Map();
+  for (let t = 0; t < 500; t++) {
+    let items = [];
+    if (kind === 'main') {
+      if (Math.random() < 0.25 && P.plate.length) { items = [[pick(P.plate), 1]]; fill(items, P.side, 2); }
+      else {
+        if (!P.protein.length || !P.veg.length) continue;
+        const prot = pick(P.protein), veg = pick(P.veg), rest = prot.cal + veg.cal;
+        const useRoti = P.roti.length && (!P.rice.length || Math.random() < 0.7);
+        const st = useRoti ? pick(P.roti) : P.rice.length ? pick(P.rice) : null;
+        if (st) items.push([st, useRoti ? clamp(Math.round((budget - rest) / st.cal), 1, 4) : (budget - rest) / st.cal >= 1.4 ? 1.5 : 1]);
+        items.push([prot, 1], [veg, 1]); fill(items, P.side, 1);
+      }
+    } else if (kind === 'breakfast') {
+      if (!P.breakfast.length) continue;
+      const m = pick(P.breakfast); items = [[m, clamp(Math.round(budget * 0.7 / m.cal), 1, 2)]]; fill(items, P.breakfastSide, 3);
+    } else {
+      const pool = kind === 'light' ? P.light : P.snack;
+      if (!pool.length) continue;
+      const a = pick(pool); if (a.cal > budget * 1.1) continue;
+      items = [[a, 1]]; if (kind === 'snack') fill(items, pool, 1);
+    }
+    const cal = sum(items);
+    if (cal > budget * 1.08 || cal < budget * (kind === 'main' || kind === 'breakfast' ? 0.75 : 0.35)) continue;
+    const tot = items.reduce((a, [f, n]) => ({ protein: a.protein + f.protein * n, carbs: a.carbs + f.carbs * n, fat: a.fat + f.fat * n, fiber: a.fiber + f.fiber * n }), { protein: 0, carbs: 0, fat: 0, fiber: 0 });
+    // prefer ideas close to the budget and rich in protein and fiber, with some randomness for variety
+    const score = 2 * (1 - Math.abs(budget - cal) / budget) + tot.protein / cal * 12 + tot.fiber / cal * 12 + Math.random() * 0.8;
+    const key = items.map(x => x[0].name).sort().join('|');
+    if (!found.has(key) || found.get(key).score < score) found.set(key, { items, cal, ...tot, score });
+  }
+  const out = [], used = new Set();
+  for (const idea of [...found.values()].sort((a, b) => b.score - a.score)) {
+    // one idea per main dish; for snacks, no food appears twice
+    const names = kind === 'main' || kind === 'breakfast' ? [idea.items[kind === 'main' && idea.items.length > 2 ? 1 : 0][0].name] : idea.items.map(x => x[0].name);
+    if (names.some(n => used.has(n))) continue;
+    names.forEach(n => used.add(n)); out.push(idea);
+    if (out.length === 4) break;
+  }
+  return out;
+}
+function renderIdeas() {
+  if (!ideaMeal) ideaMeal = meal;
+  const p = plan(), d = getDay(cur), left = p.cal - totals(d.meals).cal, label = MEALS.find(x => x[0] === ideaMeal)[1];
+  const inMeal = totals(d.meals.filter(m => m.meal === ideaMeal)).cal;
+  let budget = Math.min(left, SHARE[ideaMeal] * p.cal - inMeal), kind = ideaMeal === 'snack' ? 'snack' : ideaMeal === 'breakfast' ? 'breakfast' : 'main', info;
+  if (left < 60) { budget = 60; kind = 'light'; info = 'You have reached today’s target. If you are still hungry, these are almost free:'; }
+  else if (budget < 180 && kind !== 'snack') { budget = Math.min(left, 150); kind = 'snack'; info = `${label} is mostly used up — light options of about ${fmt(budget)} kcal (${fmt(left)} kcal left today):`; }
+  else { budget = Math.max(budget, Math.min(left, 100)); info = `Ideas for ${label.toLowerCase()} of about ${fmt(Math.round(budget / 10) * 10)} kcal (${fmt(left)} kcal left today):`; }
+  budget = Math.round(budget / 10) * 10;
+  const pr = data.prefs, key = [cur, ideaMeal, kind, budget, JSON.stringify(pr), ideaShuffle].join('#');
+  if (key !== ideaKey) { ideaKey = key; ideaList = makeIdeas(kind, budget, ideaPools()); }
+  $('ideaChips').innerHTML = chips(ideaMeal);
+  $('ideaPrefs').textContent = DIETS.find(x => x[0] === pr.diet)[1] + (pr.avoid.length ? ' · no ' + pr.avoid.map(a => AVOIDS.find(x => x[0] === a)[1].toLowerCase()).join(', ') : '') + (pr.dislikes.trim() ? ' · skipping ' + pr.dislikes.trim() : '');
+  $('ideaInfo').textContent = info;
+  const qty = ([f, n]) => `${n === 1 ? '' : n + ' × '}${esc(f.name)} <span class="muted">(${esc(f.serving)})</span>`;
+  $('ideas').innerHTML = ideaList.length ? ideaList.map((it, i) =>
+    `<div class="item idea"><div class="txt">${it.items.map(qty).join('<br>')}<br><small>${fmt(it.cal)} kcal · P ${fmt(it.protein)} · C ${fmt(it.carbs)} · F ${fmt(it.fat)} · Fiber ${fmt(it.fiber)} g</small></div><button class="green small" data-idea="${i}">Add</button></div>`).join('')
+    : '<p class="muted">Nothing fits these preferences and calories. Try loosening the preferences.</p>';
+  $('ideaMore').hidden = !ideaList.length;
+}
+$('ideaChips').onclick = e => { const b = e.target.closest('[data-meal]'); if (b) { ideaMeal = b.dataset.meal; renderIdeas(); } };
+$('ideaMore').onclick = () => { ideaShuffle++; renderIdeas(); };
+$('ideas').onclick = e => {
+  const b = e.target.closest('[data-idea]'); if (!b) return;
+  const it = ideaList[b.dataset.idea];
+  for (const [f, n] of it.items) mutDay(cur).meals.push({ name: f.name, meal: ideaMeal, note: `${n} × ${f.serving}`, cal: Math.round(f.cal * n), protein: r1(f.protein * n), carbs: r1(f.carbs * n), fat: r1(f.fat * n), fiber: r1(f.fiber * n) });
+  save(); toast(`Added ${it.items.length} item${it.items.length > 1 ? 's' : ''} to ${MEALS.find(x => x[0] === ideaMeal)[1]}`);
+};
+let prefDraft = null;
+function renderPrefs() {
+  $('pfDiet').innerHTML = DIETS.map(([k, l]) => `<button data-diet="${k}" class="${k === prefDraft.diet ? 'on' : ''}">${l}</button>`).join('');
+  $('pfAvoid').innerHTML = AVOIDS.map(([k, l]) => `<button data-avoid="${k}" class="${prefDraft.avoid.includes(k) ? 'on' : ''}" aria-pressed="${prefDraft.avoid.includes(k)}">${l}</button>`).join('');
+}
+$('prefBtn').onclick = () => { prefDraft = { diet: data.prefs.diet, avoid: [...data.prefs.avoid] }; $('pfDislikes').value = data.prefs.dislikes; renderPrefs(); $('prefDlg').showModal(); };
+$('pfDiet').onclick = e => { const b = e.target.closest('[data-diet]'); if (b) { prefDraft.diet = b.dataset.diet; renderPrefs(); } };
+$('pfAvoid').onclick = e => {
+  const b = e.target.closest('[data-avoid]'); if (!b) return;
+  const k = b.dataset.avoid; prefDraft.avoid = prefDraft.avoid.includes(k) ? prefDraft.avoid.filter(x => x !== k) : prefDraft.avoid.concat(k); renderPrefs();
+};
+$('pfCancel').onclick = () => $('prefDlg').close();
+$('pfSave').onclick = () => { data.prefs = { ...prefDraft, dislikes: $('pfDislikes').value.trim().slice(0, 200) }; $('prefDlg').close(); save(); };
 
 $('customBtn').onclick = () => { $('cErr').textContent = ''; $('cName').value = $('q').value.trim(); $('customDlg').showModal(); };
 $('cCancel').onclick = () => $('customDlg').close();
