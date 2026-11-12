@@ -32,6 +32,7 @@ function normalise(d) {
     const day = d.days[k] || (d.days[k] = {});
     day.meals = Array.isArray(day.meals) ? day.meals : [];
     day.water = num(day.water);
+    day.steps = Math.max(0, Math.round(num(day.steps)));
     day.meals.forEach(m => { if (!MEALS.some(x => x[0] === m.meal)) m.meal = 'snack'; });
   }
   const byDate = {};
@@ -42,6 +43,8 @@ function normalise(d) {
   d.target = num(d.target) || 1800;
   d.manualTarget = num(d.manualTarget) || null;
   d.adaptive = d.adaptive !== false;
+  d.stepGoal = Math.round(num(d.stepGoal)) || null;
+  d.eatBack = d.eatBack === true;
   const pf = d.prefs && typeof d.prefs === 'object' ? d.prefs : {};
   d.prefs = { diet: ['veg', 'egg', 'nonveg'].includes(pf.diet) ? pf.diet : 'veg', avoid: Array.isArray(pf.avoid) ? pf.avoid : [], dislikes: String(pf.dislikes || '') };
   d.savedMeals = Array.isArray(d.savedMeals) ? d.savedMeals.filter(m => m && m.name && Array.isArray(m.items)) : [];
@@ -53,8 +56,8 @@ function save() {
   try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) { toast('Could not save — storage is full or blocked.'); }
   render();
 }
-const getDay = d => data.days[d] || { meals: [], water: 0 };
-const mutDay = d => data.days[d] || (data.days[d] = { meals: [], water: 0 });
+const getDay = d => data.days[d] || { meals: [], water: 0, steps: 0 };
+const mutDay = d => data.days[d] || (data.days[d] = { meals: [], water: 0, steps: 0 });
 const totals = meals => meals.reduce((a, m) => { for (const k of ['cal', 'protein', 'carbs', 'fat', 'fiber']) a[k] += num(m[k]); return a; }, { cal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 });
 const latestWeight = () => data.weights.length ? data.weights[data.weights.length - 1].kg : null;
 
@@ -106,6 +109,19 @@ function plan() {
   return r;
 }
 
+/* ───────── steps ───────── */
+// The calorie target already assumes some daily movement for the chosen activity level, so only steps beyond
+// that baseline count as extra burn. Walking uses roughly 0.5 kcal per kg of body weight per 1,000 steps.
+const STEP_BASE = { 1.2: 3000, 1.375: 5000, 1.55: 7500, 1.725: 10000 };
+function stepInfo(date) {
+  const pr = data.profile, kg = latestWeight() || (pr && pr.startWeight) || 70, steps = num(getDay(date).steps);
+  const base = (pr && STEP_BASE[pr.activity]) || 5000, perStep = 0.0005 * kg;
+  const goal = data.stepGoal || Math.max(8000, base + 3000);
+  return { steps, base, goal, perStep, burned: steps * perStep, extra: Math.max(0, steps - base) * perStep, km: steps * (pr ? pr.height * 0.00415 : 0.72) / 1000 };
+}
+// Calories allowed on a day: the plan's target, plus half of the extra step calories if the person chose that.
+const stepBonus = date => data.eatBack ? Math.round(stepInfo(date).extra / 2 / 10) * 10 : 0;
+
 /* ───────── state ───────── */
 let cur = todayStr(), tab = 'today', shown = [], sheetFood = null, sheetMeal = null, remote = null;
 let meal = (() => { const h = new Date().getHours(); return h < 11 ? 'breakfast' : h < 16 ? 'lunch' : h < 18 ? 'snack' : h < 23 ? 'dinner' : 'snack'; })();
@@ -144,12 +160,15 @@ function coachTip(s, p, isToday) {
 }
 
 function renderToday() {
-  const d = getDay(cur), s = totals(d.meals), p = plan(), left = p.cal - s.cal;
+  const d = getDay(cur), s = totals(d.meals), p = plan(), bonus = stepBonus(cur);
+  p.cal += bonus;                                   // p is a fresh object, so this only affects today's view
+  const left = p.cal - s.cal;
   $('setupBanner').hidden = !!data.profile;
   $('ring').innerHTML = ringSvg(s.cal / p.cal, left < 0) +
     `<div class="mid"><b>${fmt(Math.abs(left))}</b><span>${left < 0 ? 'kcal over' : 'kcal left'}</span></div>`;
   $('consumed').textContent = fmt(s.cal);
   $('target').textContent = fmt(p.cal);
+  $('target').nextElementSibling.textContent = bonus ? `target (incl. +${bonus} from steps)` : 'target';
   $('macros').innerHTML = [['Protein', 'protein'], ['Carbs', 'carbs'], ['Fat', 'fat'], ['Fiber', 'fiber']].map(([label, k]) =>
     `<div class="macro"><b>${fmt(s[k])}</b> <span>/ ${p[k]} g</span><div class="track"><i style="width:${Math.min(100, s[k] / p[k] * 100)}%"></i></div><span>${label}</span></div>`).join('');
   $('tip').textContent = coachTip(s, p, cur === todayStr());
@@ -158,6 +177,23 @@ function renderToday() {
   $('waterCount').textContent = `${litres(d.water)} / ${litres(wGoal)} L`;
   $('waterNote').textContent = `One tap = one ${GLASS_ML} ml glass. ` + (hasWeight ? 'Goal is based on your weight (about 33 ml per kg).' : 'Goal is a standard 2 litres until you set up your plan or log a weight.');
   $('waterMinus').disabled = d.water <= 0;
+  const st = stepInfo(cur), isToday = cur === todayStr();
+  $('stepCount').textContent = `${fmt(st.steps)} / ${fmt(st.goal)}`;
+  $('stepBar').style.width = Math.min(100, st.steps / st.goal * 100) + '%';
+  $('stepIn').placeholder = isToday ? 'Steps today' : 'Steps that day';
+  let note;
+  if (!st.steps) note = `Type in the step count from your phone’s health app or watch — this site cannot read it by itself. Every 2,000 extra steps (about 20 minutes of walking) burns roughly ${fmt(2000 * st.perStep)} kcal.`;
+  else {
+    note = `≈ ${fmt(st.burned)} kcal burned walking (${st.km.toFixed(1)} km). `;
+    note += st.extra >= 1 ? `${fmt(st.extra)} kcal of that is beyond your usual activity — ${bonus ? `${bonus} kcal is added to today’s food budget` : 'extra fat loss on top of your plan'}. `
+      : `${fmt(st.base - st.steps)} more steps to pass your usual level of ${fmt(st.base)}. `;
+    note += st.steps >= st.goal ? '🎉 Goal reached.' : `${fmt(st.goal - st.steps)} steps to your goal — about ${Math.ceil((st.goal - st.steps) / 100)} minutes of walking.`;
+  }
+  $('stepNote').textContent = note;
+  $('stepBaseNote').textContent = `Your calorie target already assumes about ${fmt(st.base)} steps a day for your activity level, so only steps beyond that count as extra.`;
+  $('stepGoalIn').placeholder = `New goal (now ${fmt(st.goal)})`;
+  $('eatBack').checked = data.eatBack;
+
   $('waterDots').innerHTML = Array.from({ length: Math.max(wGoal, d.water) }, (_, i) => `<i class="${i < d.water ? 'on' : ''}"></i>`).join('');
 
   $('mealChips').innerHTML = chips(meal);
@@ -357,11 +393,11 @@ function weightChart(el) {
   svg.onpointerleave = () => { cross.setAttribute('visibility', 'hidden'); tooltip(el); };
 }
 
-function calChart(el, days, target) {
+function calChart(el, days, target, unit = 'kcal', refLabel = 'Target') {
   const W = el.clientWidth || 320, H = 190, m = { l: 40, r: 8, t: 16, b: 24 };
   const max = Math.max(target * 1.15, ...days.map(d => d.cal)) || 1;
   const bw = (W - m.l - m.r) / days.length, y = c => m.t + (1 - c / max) * (H - m.t - m.b), base = H - m.b;
-  let s = `<svg width="${W}" height="${H}" role="img" aria-label="Calories eaten per day against target">`;
+  let s = `<svg width="${W}" height="${H}" role="img" aria-label="${unit === 'kcal' ? 'Calories eaten' : 'Steps'} per day against ${refLabel.toLowerCase()}">`;
   for (const c of [0, max / 2, max]) s += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y(c)}" y2="${y(c)}"/><text x="${m.l - 6}" y="${y(c) + 4}" text-anchor="end">${fmt(c)}</text>`;
   days.forEach((d, i) => {
     const x0 = m.l + i * bw + 1, w = Math.max(2, bw - 2), top = y(d.cal), r = Math.min(4, w / 2, base - top);
@@ -369,13 +405,13 @@ function calChart(el, days, target) {
     if (i % 2 === (days.length - 1) % 2) s += `<text x="${x0 + w / 2}" y="${H - 6}" text-anchor="middle">${parseDay(d.date).getDate()}</text>`;
     s += `<rect data-i="${i}" x="${m.l + i * bw}" y="${m.t}" width="${bw}" height="${base - m.t}" fill="transparent"/>`;
   });
-  s += `<line class="ref" x1="${m.l}" x2="${W - m.r}" y1="${y(target)}" y2="${y(target)}"/><text x="${W - m.r}" y="${y(target) - 5}" text-anchor="end">Target ${fmt(target)}</text></svg>`;
+  s += `<line class="ref" x1="${m.l}" x2="${W - m.r}" y1="${y(target)}" y2="${y(target)}"/><text x="${W - m.r}" y="${y(target) - 5}" text-anchor="end">${refLabel} ${fmt(target)}</text></svg>`;
   el.innerHTML = s;
   const svg = el.firstChild;
   svg.onpointermove = e => {
     const i = e.target.dataset && e.target.dataset.i; if (i == null) return tooltip(el);
     const d = days[i], diff = d.cal - target;
-    tooltip(el, m.l + (+i + 0.5) * bw, y(d.cal), d.cal ? `${niceDate(d.date)} · ${fmt(d.cal)} kcal (${fmt(Math.abs(diff))} ${diff > 0 ? 'over' : 'under'})` : `${niceDate(d.date)} · nothing logged`);
+    tooltip(el, m.l + (+i + 0.5) * bw, y(d.cal), d.cal ? `${niceDate(d.date)} · ${fmt(d.cal)} ${unit} (${fmt(Math.abs(diff))} ${diff > 0 ? 'over' : 'under'})` : `${niceDate(d.date)} · nothing logged`);
   };
   svg.onpointerleave = () => tooltip(el);
 }
@@ -414,10 +450,15 @@ function renderProgress() {
   let streak = 0;
   for (let d = getDay(t).meals.length ? t : addDays(t, -1); getDay(d).meals.length; d = addDays(d, -1)) streak++;
   $('calTiles').innerHTML = logged.length ? tile(fmt(logged.reduce((a, d) => a + d.cal, 0) / logged.length), 'Daily average') +
-    tile(`${logged.filter(d => d.cal <= p.cal * 1.05).length} / ${logged.length}`, 'Days on target') +
+    tile(`${logged.filter(d => d.cal <= (p.cal + stepBonus(d.date)) * 1.05).length} / ${logged.length}`, 'Days on target') +
     tile(logged.length, 'Days logged') + tile(streak + (streak === 1 ? ' day' : ' days'), 'Logging streak') : '';
   if (logged.length) calChart($('calChart'), days, p.cal);
   else $('calChart').innerHTML = '<p class="muted small">Log some meals and your daily calories will show up here against your target.</p>';
+  const sDays = days.map(d => ({ date: d.date, cal: num(getDay(d.date).steps) })), sLogged = sDays.filter(d => d.cal > 0), sg = stepInfo(t);
+  $('stepTiles').innerHTML = sLogged.length ? tile(fmt(sLogged.reduce((a, d) => a + d.cal, 0) / sLogged.length), 'Daily average') + tile(fmt(Math.max(...sLogged.map(d => d.cal))), 'Best day') +
+    tile(`${sLogged.filter(d => d.cal >= sg.goal).length} / ${sLogged.length}`, 'Days at goal') + tile(fmt(sLogged.reduce((a, d) => a + d.cal, 0) * sg.perStep), 'kcal walked') : '';
+  if (sLogged.length) calChart($('stepChart'), sDays, sg.goal, 'steps', 'Goal');
+  else $('stepChart').innerHTML = '<p class="muted small">Save your steps on the Today tab and they will show up here against your goal.</p>';
 }
 
 /* ───────── render: plan ───────── */
@@ -486,6 +527,18 @@ $('nextDay').onclick = () => { if (cur < todayStr()) { cur = addDays(cur, 1); re
 $('dateLabel').onclick = () => { cur = todayStr(); render(); };
 
 $('waterPlus').onclick = () => { mutDay(cur).water++; save(); };
+$('stepSave').onclick = () => {
+  const v = Math.round(num($('stepIn').value));
+  if ($('stepIn').value === '' || v < 0 || v > 100000) return toast('Enter a step count between 0 and 100,000.');
+  mutDay(cur).steps = v; $('stepIn').value = ''; save(); toast('Steps saved.');
+};
+$('stepIn').onkeydown = e => { if (e.key === 'Enter') $('stepSave').click(); };
+$('stepGoalSave').onclick = () => {
+  const v = Math.round(num($('stepGoalIn').value));
+  if (v < 1000 || v > 50000) return toast('Enter a goal between 1,000 and 50,000 steps.');
+  data.stepGoal = v; $('stepGoalIn').value = ''; save(); toast('Step goal set.');
+};
+$('eatBack').onchange = () => { data.eatBack = $('eatBack').checked; save(); };
 $('waterMinus').onclick = () => { const d = mutDay(cur); d.water = Math.max(0, d.water - 1); save(); };
 
 $('mealChips').onclick = e => { const b = e.target.closest('[data-meal]'); if (b) { meal = b.dataset.meal; $('mealChips').innerHTML = chips(meal); renderResults(); } };
@@ -662,7 +715,7 @@ function makeIdeas(kind, budget, P) {
 }
 function renderIdeas() {
   if (!ideaMeal) ideaMeal = meal;
-  const p = plan(), d = getDay(cur), left = p.cal - totals(d.meals).cal, label = MEALS.find(x => x[0] === ideaMeal)[1];
+  const p = plan(), d = getDay(cur), left = p.cal + stepBonus(cur) - totals(d.meals).cal, label = MEALS.find(x => x[0] === ideaMeal)[1];
   const inMeal = totals(d.meals.filter(m => m.meal === ideaMeal)).cal;
   let budget = Math.min(left, SHARE[ideaMeal] * p.cal - inMeal), kind = ideaMeal === 'snack' ? 'snack' : ideaMeal === 'breakfast' ? 'breakfast' : 'main', info;
   if (left < 60) { budget = 60; kind = 'light'; info = 'You have reached today’s target. If you are still hungry, these are almost free:'; }

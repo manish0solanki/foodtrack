@@ -52,6 +52,18 @@
   </section>
 
   <section class="card">
+    <div class="rowhead"><h2>👟 Steps</h2><b id="stepCount">0 / 8,000</b></div>
+    <div class="bar"><i id="stepBar"></i></div>
+    <div class="row"><input id="stepIn" type="number" inputmode="numeric" min="0" max="100000" placeholder="Steps today"><button id="stepSave">Save</button></div>
+    <p id="stepNote" class="tipline"></p>
+    <details class="more"><summary>Step settings</summary>
+      <div class="row"><input id="stepGoalIn" type="number" inputmode="numeric" min="1000" max="50000" placeholder="New goal"><button id="stepGoalSave" class="secondary">Set goal</button></div>
+      <label class="check"><input type="checkbox" id="eatBack"> Add half of my extra step calories to the day’s food budget</label>
+      <p id="stepBaseNote" class="muted small"></p>
+    </details>
+  </section>
+
+  <section class="card">
     <h2>➕ Add food</h2>
     <div id="mealChips" class="chips"></div>
     <input id="q" type="search" autocomplete="off" placeholder="Search food (roti, dal, banana…) or type a barcode">
@@ -93,6 +105,11 @@
     <h2>🔥 Calories — last 14 days</h2>
     <div id="calTiles" class="tiles"></div>
     <div id="calChart" class="chart"></div>
+  </section>
+  <section class="card">
+    <h2>👟 Steps — last 14 days</h2>
+    <div id="stepTiles" class="tiles"></div>
+    <div id="stepChart" class="chart"></div>
   </section>
 </div>
 
