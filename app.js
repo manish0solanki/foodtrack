@@ -33,6 +33,7 @@ function normalise(d) {
     day.meals = Array.isArray(day.meals) ? day.meals : [];
     day.water = num(day.water);
     day.steps = Math.max(0, Math.round(num(day.steps)));
+    day.km = num(day.km) || 0;
     day.meals.forEach(m => { if (!MEALS.some(x => x[0] === m.meal)) m.meal = 'snack'; });
   }
   const byDate = {};
@@ -117,7 +118,8 @@ function stepInfo(date) {
   const pr = data.profile, kg = latestWeight() || (pr && pr.startWeight) || 70, steps = num(getDay(date).steps);
   const base = (pr && STEP_BASE[pr.activity]) || 5000, perStep = 0.0005 * kg;
   const goal = data.stepGoal || Math.max(8000, base + 3000);
-  return { steps, base, goal, perStep, burned: steps * perStep, extra: Math.max(0, steps - base) * perStep, km: steps * (pr ? pr.height * 0.00415 : 0.72) / 1000 };
+  return { steps, base, goal, perStep, burned: steps * perStep, extra: Math.max(0, steps - base) * perStep,
+    km: num(getDay(date).km) || steps * (pr ? pr.height * 0.00415 : 0.72) / 1000 };     // distance from the phone if known, else from stride length
 }
 // Calories allowed on a day: the plan's target, plus half of the extra step calories if the person chose that.
 const stepBonus = date => data.eatBack ? Math.round(stepInfo(date).extra / 2 / 10) * 10 : 0;
@@ -530,7 +532,33 @@ $('waterPlus').onclick = () => { mutDay(cur).water++; save(); };
 $('stepSave').onclick = () => {
   const v = Math.round(num($('stepIn').value));
   if ($('stepIn').value === '' || v < 0 || v > 100000) return toast('Enter a step count between 0 and 100,000.');
-  mutDay(cur).steps = v; $('stepIn').value = ''; save(); toast('Steps saved.');
+  const d = mutDay(cur);
+  d.steps = v; d.km = shot && shot.steps === v && shot.km ? shot.km : 0;      // keep the phone's distance only if the count was not changed
+  shot = null; $('stepIn').value = ''; save(); toast('Steps saved.');
+};
+// Read the step count from a screenshot of the phone's health app, then let the person confirm it.
+let shot = null;
+$('stepShot').onclick = () => $('stepShotIn').click();
+$('stepShotIn').onchange = async () => {
+  const f = $('stepShotIn').files[0]; $('stepShotIn').value = '';
+  if (!f) return;
+  const btn = $('stepShot'), label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Reading your screenshot…';
+  try {
+    const image = await shrinkPhoto(f, 1600);
+    const r = await fetch('api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'steps', image: image.split(',')[1], mediaType: 'image/jpeg' }) });
+    let j = null;
+    try { j = await r.json(); } catch (e) { /* not JSON: the function is not deployed on this host */ }
+    if (!j) toast('Reading screenshots is not available on this copy of the site.');
+    else if (!r.ok) toast(j.error || 'The screenshot could not be read. Try again.');
+    else if (!j.found) toast('No step count found in that image. Use a screenshot of your steps screen.');
+    else {
+      shot = { steps: j.steps, km: j.km };
+      $('stepIn').value = j.steps; $('stepIn').focus();
+      toast(`Read ${fmt(j.steps)} steps${j.km ? ` · ${j.km} km` : ''}. Check it and tap Save.`);
+    }
+  } catch (e) { toast('Could not read that screenshot. Check your connection and try again.'); }
+  btn.disabled = false; btn.textContent = label;
 };
 $('stepIn').onkeydown = e => { if (e.key === 'Enter') $('stepSave').click(); };
 $('stepGoalSave').onclick = () => {
