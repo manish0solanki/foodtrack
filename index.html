@@ -26,6 +26,11 @@
 <main>
 <!-- ───────── TODAY ───────── -->
 <div id="view-today" class="view">
+  <section id="backupBanner" class="card banner" hidden>
+    <div><b>Back up your data</b><br><span id="backupBannerText" class="muted"></span></div>
+    <div class="row" style="flex:none"><button id="backupNow" class="green">Save backup</button><button id="backupLater" class="secondary">Later</button></div>
+  </section>
+
   <section id="setupBanner" class="card banner" hidden>
     <div><b>Get your personal calorie target</b><br><span class="muted">Tell FoodTrack your height, weight and goal — it takes 30 seconds.</span></div>
     <button id="setupBtn" class="green">Set up plan</button>
@@ -152,8 +157,9 @@
 
   <section class="card">
     <h2>💾 Your data</h2>
-    <p class="muted small" style="margin-top:0">Everything is stored only on this device. Export a backup now and then.</p>
-    <div class="row"><button id="exportBtn" class="secondary">Export backup</button><button id="importBtn" class="secondary">Import backup</button><button id="resetBtn" class="secondary danger">Erase all</button></div>
+    <p class="muted small" style="margin-top:0">Everything is stored only on this device, inside this browser. A backup is a file saved to your phone’s Downloads that you can restore later, here or on another device.</p>
+    <div id="storeInfo"></div>
+    <div class="row" style="margin-top:12px"><button id="exportBtn" class="secondary">Export backup</button><button id="importBtn" class="secondary">Import backup</button><button id="resetBtn" class="secondary danger">Erase all</button></div>
     <input id="importFile" type="file" accept="application/json,.json" hidden>
   </section>
 </div>

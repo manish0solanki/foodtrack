@@ -46,6 +46,8 @@ function normalise(d) {
   d.adaptive = d.adaptive !== false;
   d.stepGoal = Math.round(num(d.stepGoal)) || null;
   d.eatBack = d.eatBack === true;
+  d.lastBackup = typeof d.lastBackup === 'string' ? d.lastBackup : null;
+  d.backupSnooze = typeof d.backupSnooze === 'string' ? d.backupSnooze : null;
   const pf = d.prefs && typeof d.prefs === 'object' ? d.prefs : {};
   d.prefs = { diet: ['veg', 'egg', 'nonveg'].includes(pf.diet) ? pf.diet : 'veg', avoid: Array.isArray(pf.avoid) ? pf.avoid : [], dislikes: String(pf.dislikes || '') };
   d.savedMeals = Array.isArray(d.savedMeals) ? d.savedMeals.filter(m => m && m.name && Array.isArray(m.items)) : [];
@@ -166,6 +168,11 @@ function renderToday() {
   p.cal += bonus;                                   // p is a fresh object, so this only affects today's view
   const left = p.cal - s.cal;
   $('setupBanner').hidden = !!data.profile;
+  // Remind about backups once there is a week of data and the last backup is two weeks old (or missing).
+  const t0 = todayStr(), dayCount = Object.keys(data.days).length, since = data.lastBackup ? Math.round((parseDay(t0) - parseDay(data.lastBackup)) / 864e5) : null;
+  const due = dayCount >= 7 && (since === null || since >= 14) && !(data.backupSnooze && data.backupSnooze > t0);
+  $('backupBanner').hidden = !due;
+  if (due) $('backupBannerText').textContent = (since === null ? `You have ${dayCount} days of data and no backup yet.` : `Your last backup was ${since} days ago.`) + ' It only takes a tap.';
   $('ring').innerHTML = ringSvg(s.cal / p.cal, left < 0) +
     `<div class="mid"><b>${fmt(Math.abs(left))}</b><span>${left < 0 ? 'kcal over' : 'kcal left'}</span></div>`;
   $('consumed').textContent = fmt(s.cal);
@@ -495,6 +502,7 @@ function renderPlan() {
   $('planOut').innerHTML = h;
   $('manualClear').hidden = !(data.manualTarget && p.auto);
   $('adaptiveOn').checked = data.adaptive;
+  renderStore();
 }
 
 function savePlan() {
@@ -816,12 +824,36 @@ $('manualSet').onclick = () => {
 $('manualClear').onclick = () => { data.manualTarget = null; save(); };
 $('adaptiveOn').onchange = () => { data.adaptive = $('adaptiveOn').checked; save(); };
 
-$('exportBtn').onclick = () => {
+/* ───────── local storage protection and backups ───────── */
+// Ask the browser to keep this site's data even when the phone is short of space. Browsers grant this
+// without a prompt to sites that are installed or used often; the answer is shown on the Plan tab.
+let storeState = 'unknown';
+async function protectStorage() {
+  try {
+    if (!navigator.storage || !navigator.storage.persist) { storeState = 'unsupported'; }
+    else storeState = (await navigator.storage.persisted()) || (await navigator.storage.persist()) ? 'protected' : 'best-effort';
+  } catch (e) { storeState = 'unsupported'; }
+  renderStore();
+}
+function renderStore() {
+  const kv = (k, v) => `<div class="kv"><span>${k}</span><b>${v}</b></div>`;
+  const since = data.lastBackup ? Math.round((parseDay(todayStr()) - parseDay(data.lastBackup)) / 864e5) : null;
+  $('storeInfo').innerHTML = kv('Saved on this device', `${Object.keys(data.days).length} day${Object.keys(data.days).length === 1 ? '' : 's'} · ${data.weights.length} weigh-in${data.weights.length === 1 ? '' : 's'}`) +
+    kv('Last backup', since === null ? 'Never' : since === 0 ? 'Today' : since === 1 ? 'Yesterday' : `${since} days ago`) +
+    kv('Protected from automatic clean-up', storeState === 'protected' ? 'Yes' : storeState === 'best-effort' ? 'Not yet' : 'Not available') +
+    (storeState === 'best-effort' ? '<div class="note">The browser may clear this site’s data if the phone runs very low on space. Installing the app (browser menu → “Add to Home screen”) usually turns protection on. Clearing browsing data by hand removes it either way, so keep a backup.</div>' : '');
+}
+function exportBackup() {
+  data.lastBackup = todayStr(); data.backupSnooze = null;
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }));
   a.download = `foodtrack-backup-${todayStr()}.json`; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-};
+  save(); toast('Backup saved to your Downloads.');
+}
+$('backupNow').onclick = exportBackup;
+$('backupLater').onclick = () => { data.backupSnooze = addDays(todayStr(), 7); save(); };
+$('exportBtn').onclick = exportBackup;
 $('importBtn').onclick = () => $('importFile').click();
 $('importFile').onchange = async () => {
   const f = $('importFile').files[0]; $('importFile').value = '';
@@ -943,3 +975,4 @@ window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTi
 document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 render();
+protectStorage();

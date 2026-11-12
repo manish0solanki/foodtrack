@@ -27,6 +27,7 @@ A mobile-first calorie, nutrition and weight-loss tracker. It is a static site (
 - Personal calorie target from sex, age, height, weight, activity and chosen pace (Mifflin-St Jeor), with a safe minimum of 1200 / 1500 kcal
 - Self-adjusting target: after about two weeks of logging and weigh-ins, the app measures what you really burn (calories eaten minus weight change × 7700 kcal/kg) and tunes the target from that; can be switched off
 - The target adjusts automatically as your logged weight changes; you can also set a custom target
+- Data stays on the device: the app asks the browser to protect it from automatic clean-up, shows when the last backup was made, and reminds you to save a backup file every two weeks
 - Export / import a backup file, or erase all data
 
 ## Running it
