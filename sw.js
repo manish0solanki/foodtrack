@@ -1,5 +1,5 @@
 // Network-first for the app's own files so updates show up immediately; cache is the offline fallback.
-const CACHE = 'foodtrack-v14';
+const CACHE = 'foodtrack-v15';
 const FILES = ['./', './index.html', './style.css', './foods.js', './app.js', './manifest.json', './icon.svg', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
