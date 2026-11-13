@@ -212,6 +212,7 @@ function renderToday() {
   $('mealChips').innerHTML = chips(meal);
   renderResults();
   renderIdeas();
+  renderProtein();
 
   const y = getDay(addDays(cur, -1));
   $('copyYesterday').hidden = !(d.meals.length === 0 && y.meals.length);
@@ -582,7 +583,7 @@ $('stepGoalSave').onclick = () => {
 $('eatBack').onchange = () => { data.eatBack = $('eatBack').checked; save(); };
 $('waterMinus').onclick = () => { const d = mutDay(cur); d.water = Math.max(0, d.water - 1); save(); };
 
-$('mealChips').onclick = e => { const b = e.target.closest('[data-meal]'); if (b) { meal = b.dataset.meal; $('mealChips').innerHTML = chips(meal); renderResults(); } };
+$('mealChips').onclick = e => { const b = e.target.closest('[data-meal]'); if (b) { meal = b.dataset.meal; $('mealChips').innerHTML = chips(meal); renderResults(); renderProtein(); } };
 $('q').oninput = renderResults;
 $('q').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); if (shown.length === 1) openSheet(shown[0]); else searchOnline(); } };
 $('results').onclick = e => {
@@ -685,10 +686,14 @@ const NAMES = {
 };
 let ideaMeal = null, ideaList = [], ideaKey = '', ideaShuffle = 0;
 
-function ideaPools() {
+// Foods the person is willing to eat: matches their diet, avoids and dislikes, and is never fried or alcoholic.
+function prefFoods() {
   const pr = data.prefs, rank = { veg: 0, egg: 1, nonveg: 2 };
   const dislikes = pr.dislikes.toLowerCase().split(/[,\n]+/).map(w => w.trim()).filter(w => w.length > 1);
-  const ok = FOODS.filter(f => rank[f.diet] <= rank[pr.diet] && !f.has.some(t => pr.avoid.includes(t) || t === 'fried' || t === 'alcohol') && !dislikes.some(w => f.keys.includes(w)));
+  return FOODS.filter(f => rank[f.diet] <= rank[pr.diet] && !f.has.some(t => pr.avoid.includes(t) || t === 'fried' || t === 'alcohol') && !dislikes.some(w => f.keys.includes(w)));
+}
+function ideaPools() {
+  const ok = prefFoods();
   const named = list => ok.filter(f => list.includes(f.name));
   return {
     roti: ok.filter(f => f.cat === 'bread' && f.fat <= 4.5 && f.cal <= 190 && !/bread|rusk|pav|puran/i.test(f.name)),
@@ -787,6 +792,47 @@ function renderPrefs() {
   $('pfDiet').innerHTML = DIETS.map(([k, l]) => `<button data-diet="${k}" class="${k === prefDraft.diet ? 'on' : ''}">${l}</button>`).join('');
   $('pfAvoid').innerHTML = AVOIDS.map(([k, l]) => `<button data-avoid="${k}" class="${prefDraft.avoid.includes(k) ? 'on' : ''}" aria-pressed="${prefDraft.avoid.includes(k)}">${l}</button>`).join('');
 }
+/* ───────── protein top-up ───────── */
+// Looks at the protein still needed today and suggests foods that supply it for the fewest calories,
+// using the same food preferences as meal ideas.
+let protItems = [], protKey = '', protShuffle = 0;
+const protFamily = f => { const m = f.name.toLowerCase().match(/chicken|paneer|egg|omelette|fish|salmon|tuna|prawn|mutton|keema|soya|curd|yogurt|milk|lassi|chana|chole|moong|rajma|dal\b|tofu|whey|protein|sprouts|peanut/); return m ? m[0].replace('omelette', 'egg').replace('yogurt', 'curd').replace('chole', 'chana').replace('whey', 'protein') : f.name; };
+function makeProtein(gap, left, foods) {
+  const want = Math.min(gap, 30);                  // a sensible amount for one sitting
+  const options = foods.filter(f => f.cat !== 'sweet' && (f.protein >= 5 || f.name === 'Egg white') && f.protein / f.cal >= 0.05).map(f => {
+    let n = Math.max(1, Math.min(f.cal <= 80 ? 3 : 2, Math.round(want / f.protein)));      // up to 3 of small items such as eggs, 2 of anything bigger
+    while (n > 1 && left > 0 && f.cal * n > left) n--;
+    // lean foods first, then how much of the gap one serving covers, with some randomness for variety
+    return { f, n, protein: f.protein * n, cal: f.cal * n, score: f.protein / f.cal * (left > 150 ? 10 : 20) + Math.min(1, f.protein * n / want) + Math.random() * (protShuffle ? 2.2 : 0.9) };
+  }).filter(x => x.protein >= 5 && (left <= 0 || x.cal <= Math.max(left, 120))).sort((a, b) => b.score - a.score);
+  const out = [], used = new Set();
+  for (const x of options) { const k = protFamily(x.f); if (used.has(k)) continue; used.add(k); out.push(x); if (out.length === 5) break; }
+  return out;
+}
+function renderProtein() {
+  const p = plan(), s = totals(getDay(cur).meals), gap = Math.round(p.protein - s.protein), left = Math.round(p.cal + stepBonus(cur) - s.cal);
+  const done = gap <= 5;
+  $('protMore').hidden = done;
+  if (done) { $('protInfo').textContent = `🎉 Protein target reached: ${fmt(s.protein)} of ${p.protein} g.`; $('protList').innerHTML = ''; return; }
+  const key = [cur, Math.round(gap / 5), Math.round(left / 50), JSON.stringify(data.prefs), protShuffle].join('#');
+  if (key !== protKey) { protKey = key; protItems = makeProtein(gap, left, prefFoods()); }
+  $('protInfo').textContent = `You need ${gap} g more protein today (${fmt(s.protein)} of ${p.protein} g so far)` +
+    (left > 0 ? ` and have ${fmt(left)} kcal left.` : '. You are at your calorie target, so these are the leanest options.') +
+    (left > 0 && gap * 4 > left * 0.6 ? ' That is a lot of protein for the calories left, so lean foods come first.' : '') +
+    ` Adds to ${MEALS.find(x => x[0] === meal)[1]}.`;
+  $('protList').innerHTML = protItems.length ? protItems.map((x, i) =>
+    `<div class="item idea"><div class="txt">${x.n === 1 ? '' : x.n + ' × '}${esc(x.f.name)} <span class="muted">(${esc(x.f.serving)})</span><br><small><b>${fmt(x.protein)} g protein</b> · ${fmt(x.cal)} kcal · covers ${Math.min(100, Math.round(x.protein / gap * 100))}% of what is left</small></div><button class="green small" data-prot="${i}">Add</button></div>`).join('')
+    : '<p class="muted">No high-protein food fits your preferences. Try loosening them.</p>';
+}
+$('protMore').onclick = () => { protShuffle++; renderProtein(); };
+$('protList').onclick = e => {
+  const b = e.target.closest('[data-prot]'); if (!b) return;
+  const { f, n } = protItems[b.dataset.prot];
+  mutDay(cur).meals.push({ name: f.name, meal, note: `${n} × ${f.serving}`, cal: Math.round(f.cal * n), protein: r1(f.protein * n), carbs: r1(f.carbs * n), fat: r1(f.fat * n), fiber: r1(f.fiber * n) });
+  save(); toast(`Added ${f.name} to ${MEALS.find(x => x[0] === meal)[1]}`);
+};
+$('prefBtn2').onclick = () => $('prefBtn').click();
+
 $('prefBtn').onclick = () => { prefDraft = { diet: data.prefs.diet, avoid: [...data.prefs.avoid] }; $('pfDislikes').value = data.prefs.dislikes; renderPrefs(); $('prefDlg').showModal(); };
 $('pfDiet').onclick = e => { const b = e.target.closest('[data-diet]'); if (b) { prefDraft.diet = b.dataset.diet; renderPrefs(); } };
 $('pfAvoid').onclick = e => {

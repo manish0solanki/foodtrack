@@ -160,7 +160,7 @@ const FOOD_ROWS = [
   ['Milk, toned', '1 glass (250 ml)', 150, 8, 12, 7.5, 0, 'doodh'],
   ['Milk, full cream', '1 glass (250 ml)', 170, 8, 12, 10, 0, 'doodh'],
   ['Milk, skimmed', '1 glass (250 ml)', 90, 8.5, 12.5, 0.5, 0, 'double toned doodh'],
-  ['Soy milk', '1 glass (250 ml)', 110, 8, 9, 4.5, 1.5],
+  ['Soy milk', '1 glass (250 ml)', 110, 8, 9, 4.5, 1.5, 'soya'],
   ['Cheese slice', '1 slice', 60, 3.5, 1, 4.5, 0],
   ['Cheese cube', '1 cube (25 g)', 80, 5, 0.5, 6.5, 0],
   ['Butter', '1 tsp (5 g)', 36, 0, 0, 4, 0, 'makhan'],
