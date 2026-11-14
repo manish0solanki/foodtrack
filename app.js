@@ -34,6 +34,7 @@ function normalise(d) {
     day.water = num(day.water);
     day.steps = Math.max(0, Math.round(num(day.steps)));
     day.km = num(day.km) || 0;
+    day.acts = (Array.isArray(day.acts) ? day.acts : []).filter(a => a && a.label && num(a.min) > 0);
     day.meals.forEach(m => { if (!MEALS.some(x => x[0] === m.meal)) m.meal = 'snack'; });
   }
   const byDate = {};
@@ -128,7 +129,8 @@ function stepInfo(date) {
     km: num(getDay(date).km) || steps * (pr ? pr.height * 0.00415 : 0.72) / 1000 };     // distance from the phone if known, else from stride length
 }
 // Calories allowed on a day: the plan's target, plus half of the extra step calories if the person chose that.
-const stepBonus = date => data.eatBack ? Math.round(stepInfo(date).extra / 2 / 10) * 10 : 0;
+const actExtra = date => (getDay(date).acts || []).reduce((a, x) => a + num(x.kcal), 0);
+const stepBonus = date => data.eatBack ? Math.round((stepInfo(date).extra + actExtra(date)) / 2 / 10) * 10 : 0;
 
 /* ───────── state ───────── */
 let cur = todayStr(), tab = 'today', shown = [], sheetFood = null, sheetMeal = null, remote = null;
@@ -181,7 +183,7 @@ function renderToday() {
     `<div class="mid"><b>${fmt(Math.abs(left))}</b><span>${left < 0 ? 'kcal over' : 'kcal left'}</span></div>`;
   $('consumed').textContent = fmt(s.cal);
   $('target').textContent = fmt(p.cal);
-  $('target').nextElementSibling.textContent = bonus ? `target (incl. +${bonus} from steps)` : 'target';
+  $('target').nextElementSibling.textContent = bonus ? `target (incl. +${bonus} from activity)` : 'target';
   $('macros').innerHTML = [['Protein', 'protein'], ['Carbs', 'carbs'], ['Fat', 'fat'], ['Fiber', 'fiber']].map(([label, k]) =>
     `<div class="macro"><b>${fmt(s[k])}</b> <span>/ ${p[k]} g</span><div class="track"><i style="width:${Math.min(100, s[k] / p[k] * 100)}%"></i></div><span>${label}</span></div>`).join('');
   $('tip').textContent = coachTip(s, p, cur === todayStr());
@@ -198,7 +200,7 @@ function renderToday() {
   if (!st.steps) note = `Type in the step count from your phone’s health app or watch — this site cannot read it by itself. Every 2,000 extra steps (about 20 minutes of walking) burns roughly ${fmt(2000 * st.perStep)} kcal.`;
   else {
     note = `≈ ${fmt(st.burned)} kcal burned walking (${st.km.toFixed(1)} km). `;
-    note += st.extra >= 1 ? `${fmt(st.extra)} kcal of that is beyond your usual activity — ${bonus ? `${bonus} kcal is added to today’s food budget` : 'extra fat loss on top of your plan'}. `
+    note += st.extra >= 1 ? `${fmt(st.extra)} kcal of that is beyond your usual activity — ${bonus ? 'half is added to today’s food budget' : 'extra fat loss on top of your plan'}. `
       : `${fmt(st.base - st.steps)} more steps to pass your usual level of ${fmt(st.base)}. `;
     note += st.steps >= st.goal ? '🎉 Goal reached.' : `${fmt(st.goal - st.steps)} steps to your goal — about ${Math.ceil((st.goal - st.steps) / 100)} minutes of walking.`;
   }
@@ -206,6 +208,7 @@ function renderToday() {
   $('stepBaseNote').textContent = `Your calorie target already assumes about ${fmt(st.base)} steps a day for your activity level, so only steps beyond that count as extra.`;
   $('stepGoalIn').placeholder = `New goal (now ${fmt(st.goal)})`;
   $('eatBack').checked = data.eatBack;
+  renderActivity();
 
   $('waterDots').innerHTML = Array.from({ length: Math.max(wGoal, d.water) }, (_, i) => `<i class="${i < d.water ? 'on' : ''}"></i>`).join('');
 
@@ -580,6 +583,37 @@ $('stepGoalSave').onclick = () => {
   if (v < 1000 || v > 50000) return toast('Enter a goal between 1,000 and 50,000 steps.');
   data.stepGoal = v; $('stepGoalIn').value = ''; save(); toast('Step goal set.');
 };
+/* ───────── other activity ───────── */
+// Calories for a timed activity: MET × body weight × hours. Only the part above resting (MET − 1) counts as
+// extra burn, because the daily target already covers resting energy.
+const ACTIVITIES = [['walk', 'Brisk walk', 4.3], ['jog', 'Jogging', 7], ['run', 'Running', 9.8], ['cycle', 'Cycling', 7.5], ['gym', 'Gym / weights', 5], ['hiit', 'HIIT workout', 8],
+  ['yoga', 'Yoga', 2.5], ['swim', 'Swimming', 6], ['dance', 'Dancing', 5], ['stairs', 'Climbing stairs', 8], ['skip', 'Skipping rope', 11], ['badminton', 'Badminton', 5.5],
+  ['cricket', 'Cricket', 4.8], ['football', 'Football', 7], ['house', 'Housework', 3.3], ['personal', 'Personal time', 3]];
+const EFFORTS = [[0.75, 'Easy'], [1, 'Normal'], [1.3, 'Hard']];
+function renderActivity() {
+  const acts = getDay(cur).acts || [], total = actExtra(cur);
+  if (!$('actType').options.length) {
+    $('actType').innerHTML = ACTIVITIES.map(([k, label]) => `<option value="${k}">${label}</option>`).join('');
+    $('actEffort').innerHTML = EFFORTS.map(([f, label]) => `<option value="${f}"${f === 1 ? ' selected' : ''}>${label}</option>`).join('');
+  }
+  $('actTotal').textContent = acts.length ? `${fmt(total)} kcal` : '';
+  $('actList').innerHTML = acts.map((a, i) =>
+    `<div class="item"><div class="txt"><b>${esc(a.label)}</b><br><small>${a.min} min · ${esc(a.effort)}</small></div><span class="kc">${fmt(a.kcal)} kcal</span><button class="secondary icon" data-delact="${i}" aria-label="Remove ${esc(a.label)}">×</button></div>`).join('');
+  $('actNote').textContent = acts.length ? `${fmt(total)} kcal burned beyond resting — ${stepBonus(cur) ? 'half is added to today’s food budget' : 'extra fat loss on top of your plan'}.`
+    : 'Log a workout or any other activity with its duration. If your phone already counted it as steps, skip it here so it is not counted twice.';
+}
+$('actAdd').onclick = () => {
+  const min = Math.round(num($('actMin').value));
+  if (min < 1 || min > 600) return toast('Enter the duration in minutes (1 to 600).');
+  const [, label, met] = ACTIVITIES.find(a => a[0] === $('actType').value), [factor, effort] = EFFORTS.find(e => String(e[0]) === $('actEffort').value);
+  const pr = data.profile, kg = latestWeight() || (pr && pr.startWeight) || 70;
+  const d = mutDay(cur);
+  (d.acts = d.acts || []).push({ type: $('actType').value, label, effort, min, kcal: Math.round(Math.max(0, met * factor - 1) * kg * min / 60) });
+  $('actMin').value = ''; save(); toast(`Added ${label}, ${min} min.`);
+};
+$('actMin').onkeydown = e => { if (e.key === 'Enter') $('actAdd').click(); };
+$('actList').onclick = e => { const b = e.target.closest('[data-delact]'); if (b) { mutDay(cur).acts.splice(+b.dataset.delact, 1); save(); } };
+
 $('eatBack').onchange = () => { data.eatBack = $('eatBack').checked; save(); };
 $('waterMinus').onclick = () => { const d = mutDay(cur); d.water = Math.max(0, d.water - 1); save(); };
 

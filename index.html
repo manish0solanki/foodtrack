@@ -65,9 +65,20 @@
     <p id="stepNote" class="tipline"></p>
     <details class="more"><summary>Step settings</summary>
       <div class="row"><input id="stepGoalIn" type="number" inputmode="numeric" min="1000" max="50000" placeholder="New goal"><button id="stepGoalSave" class="secondary">Set goal</button></div>
-      <label class="check"><input type="checkbox" id="eatBack"> Add half of my extra step calories to the day’s food budget</label>
+      <label class="check"><input type="checkbox" id="eatBack"> Add half of my extra step and activity calories to the day’s food budget</label>
       <p id="stepBaseNote" class="muted small"></p>
     </details>
+  </section>
+
+  <section class="card">
+    <div class="rowhead"><h2>🏃 Activity</h2><b id="actTotal"></b></div>
+    <div class="form">
+      <label>Activity<select id="actType"></select></label>
+      <label>Effort<select id="actEffort"></select></label>
+    </div>
+    <div class="row" style="margin-top:10px"><input id="actMin" type="number" inputmode="numeric" min="1" max="600" placeholder="Minutes"><button id="actAdd">Add</button></div>
+    <div id="actList" style="margin-top:6px"></div>
+    <p id="actNote" class="tipline"></p>
   </section>
 
   <section class="card">
