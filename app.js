@@ -235,20 +235,20 @@ const chips = on => MEALS.map(([k, label]) => `<button data-meal="${k}" class="$
 /* ───────── food search ───────── */
 const foodLine = f => `${fmt(f.cal)} kcal · P ${r1(f.protein)} · C ${r1(f.carbs)} · F ${r1(f.fat)} g`;
 function renderResults() {
-  const q = $('q').value.trim().toLowerCase();
+  const q = normFood($('q').value.trim());      // normalised spelling, so "vegetable pulav" finds "Veg pulao"
   let html = '';
   shown = [];
   const row = f => { shown.push(f); return `<button class="item pick" data-i="${shown.length - 1}"><span class="txt"><b>${esc(f.name)}</b><br><small>${esc(f.serving)} · ${foodLine(f)}</small></span><span class="kc">＋</span></button>`; };
   const savedRow = ([m, i]) => `<div class="item"><button class="item pick" data-sm="${i}"><span class="txt"><b>⭐ ${esc(m.name)}</b><br><small>${m.items.length} item${m.items.length > 1 ? 's' : ''} · ${fmt(totals(m.items).cal)} kcal · adds to ${MEALS.find(x => x[0] === meal)[1]}</small></span><span class="kc">＋</span></button><button class="secondary icon" data-smdel="${i}" aria-label="Delete saved meal ${esc(m.name)}">×</button></div>`;
-  const saved = data.savedMeals.map((m, i) => [m, i]).filter(([m]) => !q || q.split(/\s+/).every(w => m.name.toLowerCase().includes(w)));
+  const saved = data.savedMeals.map((m, i) => [m, i]).filter(([m]) => !q || q.split(/\s+/).every(w => normFood(m.name).includes(w)));
   if (!q) {
     if (saved.length) html = '<p class="listhead">Saved meals</p>' + saved.slice(0, 8).map(savedRow).join('');
     if (data.recents.length) html += '<p class="listhead">Recent</p>' + data.recents.slice(0, 6).map(row).join('');
   } else {
     html = saved.slice(0, 4).map(savedRow).join('');
-    const words = q.split(/\s+/), hit = f => words.every(w => (f.keys || f.name.toLowerCase()).includes(w));
+    const words = q.split(/\s+/), hit = f => words.every(w => (f.keys || normFood(f.name)).includes(w));
     const seen = new Set();
-    const rank = f => { const n = f.name.toLowerCase(); return n.startsWith(q) ? 0 : n.includes(q) ? 1 : 2; };   // name matches before alias matches
+    const rank = f => { const n = normFood(f.name); return n.startsWith(q) ? 0 : n.includes(q) ? 1 : 2; };   // name matches before alias matches
     const local = data.recents.concat(FOODS).filter(f => hit(f) && !seen.has(f.name + '|' + f.serving) && seen.add(f.name + '|' + f.serving))
       .map((f, i) => [f, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).slice(0, 30).map(x => x[0]);
     html += local.map(row).join('');
@@ -732,7 +732,7 @@ let ideaMeal = null, ideaList = [], ideaKey = '', ideaShuffle = 0;
 // Foods the person is willing to eat: matches their diet, avoids and dislikes, and is never fried or alcoholic.
 function prefFoods() {
   const pr = data.prefs, rank = { veg: 0, egg: 1, nonveg: 2 };
-  const dislikes = pr.dislikes.toLowerCase().split(/[,\n]+/).map(w => w.trim()).filter(w => w.length > 1);
+  const dislikes = normFood(pr.dislikes).split(/[,\n]+/).map(w => w.trim()).filter(w => w.length > 1);
   return FOODS.filter(f => rank[f.diet] <= rank[pr.diet] && !f.has.some(t => pr.avoid.includes(t) || t === 'fried' || t === 'alcohol') && !dislikes.some(w => f.keys.includes(w)));
 }
 function ideaPools() {
