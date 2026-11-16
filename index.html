@@ -59,7 +59,7 @@
   <section class="card">
     <div class="rowhead"><h2>👟 Steps</h2><b id="stepCount">0 / 8,000</b></div>
     <div class="pbar"><i id="stepBar"></i></div>
-    <div class="row"><input id="stepIn" type="number" inputmode="numeric" min="0" max="100000" placeholder="Steps today"><button id="stepSave">Save</button></div>
+    <div class="row steprow"><input id="stepIn" type="number" inputmode="decimal" min="0" step="any" placeholder="Steps today"><select id="stepUnit" aria-label="Enter steps or distance"><option value="steps">steps</option><option value="km">km</option></select><button id="stepSave">Save</button></div>
     <button id="stepShot" class="secondary linkbtn">📷 Read steps from a screenshot</button>
     <input id="stepShotIn" type="file" accept="image/*" hidden>
     <p id="stepNote" class="tipline"></p>

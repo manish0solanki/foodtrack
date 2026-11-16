@@ -9,7 +9,7 @@ A mobile-first calorie, nutrition and weight-loss tracker. It is a static site (
 - Protein, carbs, fat and fiber progress against personal targets
 - A short coaching tip based on the day so far
 - Water tracker in litres (250 ml per glass), with a daily goal based on body weight
-- Step tracker: enter the day's steps, or upload a screenshot of your phone's health app and let AI read the count, to see calories burned walking, distance, progress to a step goal, and how much is extra beyond your usual activity (optionally add half of that to the day's food budget)
+- Step tracker: enter the day's steps (or the distance in km, which is converted to steps from your stride length), or upload a screenshot of your phone's health app and let AI read the count, to see calories burned walking, distance, progress to a step goal, and how much is extra beyond your usual activity (optionally add half of that to the day's food budget)
 - Activity log: pick an activity, effort and duration to count the calories it burned beyond resting; counts toward the same optional food-budget bonus as steps
 - Add food from a built-in list of about 530 foods: Indian dishes, sandwiches, wraps and continental food, with regional names (phulka, golgappa, puliyogare…), your recent foods, packaged foods from Open Food Facts, a barcode, or a custom entry
 - Take or choose a photo of a meal and let AI estimate the foods, portions and calories; you review and correct before it is logged

@@ -174,3 +174,5 @@ dialog .row > *{min-width:0}
 .more summary{cursor:pointer;color:var(--muted);padding:6px 0}
 .more .row{margin-top:8px}
 .row > input{flex:2}
+.steprow > select{flex:0 0 84px;min-width:0;padding:11px 8px}
+.steprow > button{flex:0 0 auto;min-width:72px}
