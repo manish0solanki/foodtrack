@@ -121,12 +121,14 @@ function plan() {
 // The calorie target already assumes some daily movement for the chosen activity level, so only steps beyond
 // that baseline count as extra burn. Walking uses roughly 0.5 kcal per kg of body weight per 1,000 steps.
 const STEP_BASE = { 1.2: 3000, 1.375: 5000, 1.55: 7500, 1.725: 10000 };
+// Average walking stride in metres: about 41.5% of height, or 0.72 m when height is unknown.
+const strideM = () => data.profile ? data.profile.height * 0.00415 : 0.72;
 function stepInfo(date) {
   const pr = data.profile, kg = latestWeight() || (pr && pr.startWeight) || 70, steps = num(getDay(date).steps);
   const base = (pr && STEP_BASE[pr.activity]) || 5000, perStep = 0.0005 * kg;
   const goal = data.stepGoal || Math.max(8000, base + 3000);
   return { steps, base, goal, perStep, burned: steps * perStep, extra: Math.max(0, steps - base) * perStep,
-    km: num(getDay(date).km) || steps * (pr ? pr.height * 0.00415 : 0.72) / 1000 };     // distance from the phone if known, else from stride length
+    km: num(getDay(date).km) || steps * strideM() / 1000 };     // distance as entered or from the phone if known, else from stride length
 }
 // Calories allowed on a day: the plan's target, plus half of the extra step calories if the person chose that.
 const actExtra = date => (getDay(date).acts || []).reduce((a, x) => a + num(x.kcal), 0);
@@ -195,7 +197,7 @@ function renderToday() {
   const st = stepInfo(cur), isToday = cur === todayStr();
   $('stepCount').textContent = `${fmt(st.steps)} / ${fmt(st.goal)}`;
   $('stepBar').style.width = Math.min(100, st.steps / st.goal * 100) + '%';
-  $('stepIn').placeholder = isToday ? 'Steps today' : 'Steps that day';
+  $('stepIn').placeholder = $('stepUnit').value === 'km' ? (isToday ? 'Km walked today' : 'Km walked that day') : (isToday ? 'Steps today' : 'Steps that day');
   let note;
   if (!st.steps) note = `Type in the step count from your phone’s health app or watch — this site cannot read it by itself. Every 2,000 extra steps (about 20 minutes of walking) burns roughly ${fmt(2000 * st.perStep)} kcal.`;
   else {
@@ -547,12 +549,19 @@ $('dateLabel').onclick = () => { cur = todayStr(); render(); };
 
 $('waterPlus').onclick = () => { mutDay(cur).water++; save(); };
 $('stepSave').onclick = () => {
+  const d = mutDay(cur);
+  if ($('stepUnit').value === 'km') {          // distance entered: work the steps out from stride length
+    const km = Math.round(num($('stepIn').value) * 100) / 100;
+    if ($('stepIn').value === '' || km < 0 || km > 80) return toast('Enter a distance between 0 and 80 km.');
+    d.steps = Math.round(km * 1000 / strideM()); d.km = km;
+    shot = null; $('stepIn').value = ''; save(); return toast(`${km} km saved as about ${fmt(d.steps)} steps.`);
+  }
   const v = Math.round(num($('stepIn').value));
   if ($('stepIn').value === '' || v < 0 || v > 100000) return toast('Enter a step count between 0 and 100,000.');
-  const d = mutDay(cur);
   d.steps = v; d.km = shot && shot.steps === v && shot.km ? shot.km : 0;      // keep the phone's distance only if the count was not changed
   shot = null; $('stepIn').value = ''; save(); toast('Steps saved.');
 };
+$('stepUnit').onchange = () => { $('stepIn').value = ''; shot = null; renderToday(); };
 // Read the step count from a screenshot of the phone's health app, then let the person confirm it.
 let shot = null;
 $('stepShot').onclick = () => $('stepShotIn').click();
@@ -571,7 +580,7 @@ $('stepShotIn').onchange = async () => {
     else if (!j.found) toast('No step count found in that image. Use a screenshot of your steps screen.');
     else {
       shot = { steps: j.steps, km: j.km };
-      $('stepIn').value = j.steps; $('stepIn').focus();
+      $('stepUnit').value = 'steps'; $('stepIn').value = j.steps; $('stepIn').focus();
       toast(`Read ${fmt(j.steps)} steps${j.km ? ` · ${j.km} km` : ''}. Check it and tap Save.`);
     }
   } catch (e) { toast('Could not read that screenshot. Check your connection and try again.'); }
