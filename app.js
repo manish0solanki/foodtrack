@@ -152,12 +152,29 @@ function renderHeader() {
   $('nextDay').disabled = cur >= t;
 }
 
-function ringSvg(frac, over) {
-  const R = 44, C = 2 * Math.PI * R, f = Math.max(0, Math.min(1, frac));
-  return `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">
-    <circle cx="50" cy="50" r="${R}" fill="none" stroke="var(--line)" stroke-width="9"/>
-    <circle cx="50" cy="50" r="${R}" fill="none" stroke="${over ? 'var(--over)' : 'var(--accent)'}" stroke-width="9" stroke-linecap="round"
-      stroke-dasharray="${f * C} ${C}" transform="rotate(-90 50 50)"/></svg>`;
+// The ring and macro bars are built once and then updated in place, so their CSS transitions animate each change.
+const RING_C = 2 * Math.PI * 44;
+function drawRing(frac, over, value, label) {
+  const el = $('ring');
+  if (!el.querySelector('.prog')) el.innerHTML = `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">
+    <defs><linearGradient id="ringGood" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22c55e"/><stop offset="1" stop-color="#14b8a6"/></linearGradient>
+      <linearGradient id="ringOver" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f97316"/><stop offset="1" stop-color="#ef4444"/></linearGradient></defs>
+    <circle cx="50" cy="50" r="44" fill="none" stroke="var(--line)" stroke-width="9"/>
+    <circle class="prog" cx="50" cy="50" r="44" fill="none" stroke-width="9" stroke-linecap="round" stroke-dasharray="0 ${RING_C}" transform="rotate(-90 50 50)"/></svg>
+    <div class="mid"><b>0</b><span></span></div>`;
+  const prog = el.querySelector('.prog'), f = Math.max(0, Math.min(1, frac));
+  prog.setAttribute('stroke', over ? 'url(#ringOver)' : 'url(#ringGood)');
+  requestAnimationFrame(() => prog.setAttribute('stroke-dasharray', `${f * RING_C} ${RING_C}`));
+  countTo(el.querySelector('.mid b'), value); el.querySelector('.mid span').textContent = label;
+}
+// Animates a number from its last value to the new one.
+function countTo(el, to) {
+  const from = el._v ?? 0; el._v = to;
+  if (from === to || matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = fmt(to); return; }
+  const t0 = performance.now(), dur = 700;
+  cancelAnimationFrame(el._raf);
+  const step = now => { const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(from + (to - from) * e); if (k < 1) el._raf = requestAnimationFrame(step); };
+  el._raf = requestAnimationFrame(step);
 }
 
 function coachTip(s, p, isToday) {
@@ -181,13 +198,18 @@ function renderToday() {
   const due = !auth && dayCount >= 7 && (since === null || since >= 14) && !(data.backupSnooze && data.backupSnooze > t0);
   $('backupBanner').hidden = !due;
   if (due) $('backupBannerText').textContent = (since === null ? `You have ${dayCount} days of data and no backup yet.` : `Your last backup was ${since} days ago.`) + ' It only takes a tap.';
-  $('ring').innerHTML = ringSvg(s.cal / p.cal, left < 0) +
-    `<div class="mid"><b>${fmt(Math.abs(left))}</b><span>${left < 0 ? 'kcal over' : 'kcal left'}</span></div>`;
-  $('consumed').textContent = fmt(s.cal);
-  $('target').textContent = fmt(p.cal);
+  drawRing(s.cal / p.cal, left < 0, Math.round(Math.abs(left)), left < 0 ? 'kcal over' : 'kcal left');
+  countTo($('consumed'), Math.round(s.cal));
+  countTo($('target'), Math.round(p.cal));
   $('target').nextElementSibling.textContent = bonus ? `target (incl. +${bonus} from activity)` : 'target';
-  $('macros').innerHTML = [['Protein', 'protein'], ['Carbs', 'carbs'], ['Fat', 'fat'], ['Fiber', 'fiber']].map(([label, k]) =>
-    `<div class="macro"><b>${fmt(s[k])}</b> <span>/ ${p[k]} g</span><div class="track"><i style="width:${Math.min(100, s[k] / p[k] * 100)}%"></i></div><span>${label}</span></div>`).join('');
+  const MAC = [['Protein', 'protein'], ['Carbs', 'carbs'], ['Fat', 'fat'], ['Fiber', 'fiber']];
+  if ($('macros').children.length !== 4) $('macros').innerHTML = MAC.map(([label]) => `<div class="macro"><b>0</b> <span></span><div class="track"><i style="width:0"></i></div><span>${label}</span></div>`).join('');
+  MAC.forEach(([, k], i) => {
+    const m = $('macros').children[i];
+    m.querySelector('b').textContent = fmt(s[k]); m.querySelector('span').textContent = `/ ${p[k]} g`;
+    const bar = m.querySelector('i'), w = Math.min(100, s[k] / p[k] * 100) + '%';
+    requestAnimationFrame(() => { bar.style.width = w; });
+  });
   $('tip').textContent = coachTip(s, p, cur === todayStr());
 
   const wGoal = waterGoal(), hasWeight = !!(latestWeight() || (data.profile && data.profile.startWeight));
