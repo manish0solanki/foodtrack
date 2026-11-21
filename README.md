@@ -33,6 +33,11 @@ A mobile-first calorie, nutrition and weight-loss tracker. It is a static site (
 - Optional cloud backup: sign in with a MarketPulse account (Supabase Auth) and every change is copied to a private row a few seconds later; signing in on another device loads the data there
 - Export / import a backup file, or erase all data
 
+**Look and feel**
+- Frosted-glass cards over a slowly drifting colour background, in light and dark mode
+- Animated calorie ring, counting numbers and progress bars; cards rise in when a tab opens; dialogs and toasts slide in
+- Motion is switched off when the phone is set to reduce motion
+
 ## Running it
 
 Open `index.html` through any static web server (for example GitHub Pages), or locally:

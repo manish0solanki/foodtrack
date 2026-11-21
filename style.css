@@ -176,3 +176,101 @@ dialog .row > *{min-width:0}
 .row > input{flex:2}
 .steprow > select{flex:0 0 84px;min-width:0;padding:11px 8px}
 .steprow > button{flex:0 0 auto;min-width:72px}
+
+/* ═════════ Glass theme ═════════
+   Frosted, translucent surfaces over a slowly drifting colour background, plus light motion.
+   Everything below overrides the base styles above; prefers-reduced-motion turns the motion off. */
+:root{
+  --bg:#eef3f8;--card:rgba(255,255,255,.58);--card-strong:rgba(255,255,255,.82);--glass-edge:rgba(255,255,255,.75);
+  --soft:rgba(255,255,255,.55);--line:rgba(100,116,139,.18);--ink:#132036;--muted:#5b6b82;
+  --accent:#16a34a;--accent2:#0d9488;--shadow:0 8px 32px rgba(31,41,55,.10);--blur:saturate(170%) blur(18px);
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#060b16;--card:rgba(22,32,52,.55);--card-strong:rgba(22,32,52,.88);--glass-edge:rgba(255,255,255,.09);
+  --soft:rgba(255,255,255,.07);--line:rgba(148,163,184,.16);--ink:#e8eef8;--muted:#9fb0c8;
+  --accent:#22c55e;--accent2:#2dd4bf;--shadow:0 8px 32px rgba(0,0,0,.35);
+}}
+
+body{background:var(--bg);padding-bottom:calc(100px + env(safe-area-inset-bottom));-webkit-tap-highlight-color:transparent}
+
+/* drifting colour blobs behind everything */
+.backdrop{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.backdrop i{position:absolute;border-radius:50%;filter:blur(70px);opacity:.55;will-change:transform}
+.backdrop i:nth-child(1){width:58vmax;height:58vmax;left:-18vmax;top:-20vmax;background:radial-gradient(circle,#4ade80,transparent 65%);animation:drift1 26s ease-in-out infinite alternate}
+.backdrop i:nth-child(2){width:52vmax;height:52vmax;right:-20vmax;top:18vh;background:radial-gradient(circle,#38bdf8,transparent 65%);animation:drift2 32s ease-in-out infinite alternate}
+.backdrop i:nth-child(3){width:48vmax;height:48vmax;left:8vw;bottom:-24vmax;background:radial-gradient(circle,#a78bfa,transparent 65%);animation:drift3 29s ease-in-out infinite alternate}
+@media(prefers-color-scheme:dark){.backdrop i{opacity:.32}}
+@keyframes drift1{to{transform:translate(14vw,12vh) scale(1.12)}}
+@keyframes drift2{to{transform:translate(-16vw,-8vh) scale(.9)}}
+@keyframes drift3{to{transform:translate(10vw,-14vh) scale(1.15)}}
+
+/* glass surfaces */
+.card,header,.tabs,dialog,.tt,.toast{-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.card{background:var(--card);border:1px solid var(--glass-edge);border-radius:22px;box-shadow:var(--shadow)}
+.banner{border:1px solid rgba(34,197,94,.55)}
+header{background:var(--card);color:var(--ink);border-bottom:1px solid var(--glass-edge);box-shadow:0 4px 20px rgba(31,41,55,.06)}
+header h1 .brand{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.datenav button{background:var(--soft);color:var(--ink);border:1px solid var(--glass-edge)}
+.sumstats div,.tile,.tipline,.note,.pill{background:var(--soft);border:1px solid var(--glass-edge)}
+input,select{background:var(--soft);border:1px solid var(--line);transition:border-color .2s,box-shadow .2s,background .2s}
+input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px rgba(34,197,94,.18);background:var(--card-strong)}
+
+/* buttons */
+button{transition:transform .15s var(--ease),box-shadow .2s,background .2s,opacity .2s}
+button:active:not(:disabled){transform:scale(.96)}
+button.secondary{background:var(--soft);border:1px solid var(--glass-edge)}
+button.green{background:linear-gradient(135deg,#22c55e,#0d9488);box-shadow:0 6px 18px rgba(16,185,129,.30)}
+button.green:hover:not(:disabled){box-shadow:0 8px 24px rgba(16,185,129,.42)}
+.chips button{border:1px solid var(--glass-edge);transition:transform .15s var(--ease),background .25s,color .25s}
+.chips button.on{background:linear-gradient(135deg,#22c55e,#0d9488);color:#fff;border-color:transparent;box-shadow:0 4px 14px rgba(16,185,129,.30)}
+@media(prefers-color-scheme:dark){.chips button.on{color:#fff}}
+.form .lbl button.on{color:#fff}
+
+/* bars and progress */
+.macro .track,.pbar{background:var(--line)}
+.macro .track i,.pbar i{background:linear-gradient(90deg,#22c55e,#14b8a6);transition:width .8s var(--ease)}
+.dots i{transition:background .3s,transform .3s var(--ease)}
+.dots i.on{background:linear-gradient(180deg,#38bdf8,#0284c7);box-shadow:0 2px 8px rgba(14,165,233,.35)}
+.ring circle.prog{transition:stroke-dasharray 1s var(--ease),stroke .4s}
+.ring .mid b{font-variant-numeric:tabular-nums}
+
+/* lists */
+.item{border-bottom-color:var(--line)}
+.item.pick{transition:background .2s;border-radius:10px}
+.item.pick:hover{background:var(--soft)}
+
+/* floating tab bar */
+.tabs{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));padding:6px;border-radius:24px;background:var(--card);border:1px solid var(--glass-edge);box-shadow:var(--shadow);max-width:520px;margin:0 auto;gap:4px}
+.tabs button{border-radius:18px;padding:7px 0 8px;transition:background .3s var(--ease),color .3s}
+.tabs button.on{background:linear-gradient(135deg,rgba(34,197,94,.20),rgba(13,148,136,.20));color:var(--accent-ink)}
+.tabs button.on span{animation:hop .45s var(--ease)}
+@keyframes hop{40%{transform:translateY(-4px) scale(1.12)}}
+
+/* dialogs, tooltip, toast */
+dialog{background:var(--card-strong);border:1px solid var(--glass-edge);border-radius:24px;box-shadow:0 24px 60px rgba(0,0,0,.25)}
+dialog[open]{animation:pop .32s var(--ease)}
+dialog::backdrop{background:rgba(8,13,26,.35);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);animation:fade .3s ease}
+@keyframes pop{from{opacity:0;transform:translateY(16px) scale(.96)}}
+@keyframes fade{from{opacity:0}}
+.tt{background:rgba(17,24,39,.82)}
+.toast{background:rgba(17,24,39,.82);bottom:calc(96px + env(safe-area-inset-bottom));transform:translate(-50%,14px);transition:opacity .25s,transform .35s var(--ease)}
+.toast.show{transform:translate(-50%,0)}
+
+/* cards rise in when a tab opens (CSS restarts the animation each time a view is shown) */
+.view > .card{animation:rise .55s var(--ease) both}
+.view > .card:nth-of-type(2){animation-delay:.05s}.view > .card:nth-of-type(3){animation-delay:.1s}
+.view > .card:nth-of-type(4){animation-delay:.15s}.view > .card:nth-of-type(5){animation-delay:.2s}
+.view > .card:nth-of-type(6){animation-delay:.25s}.view > .card:nth-of-type(n+7){animation-delay:.3s}
+@keyframes rise{from{opacity:0;transform:translateY(18px) scale(.985)}}
+.idea,#protList .item,#actList .item{animation:fade .4s ease both}
+
+/* older browsers without backdrop blur: use solid surfaces so text stays readable */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  :root{--card:rgba(255,255,255,.94)}
+  @media(prefers-color-scheme:dark){:root{--card:rgba(22,32,52,.96)}}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .backdrop i{animation:none}
+}
