@@ -274,3 +274,63 @@ dialog::backdrop{background:rgba(8,13,26,.35);-webkit-backdrop-filter:blur(4px);
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
   .backdrop i{animation:none}
 }
+
+/* ═════════ Three-colour palette, 60 / 30 / 10 ═════════
+   60%  Sage mist   — page background, glass cards, everyday surfaces and neutral text (the calm base).
+   30%  Forest green — brand, header and tab highlights, progress (ring, bars, water, charts), primary
+                        and secondary buttons, tiles. Everything that shows tracking.
+   10%  Coral        — only calls to action (Add, Save, Sign in), the selected chip, the active tab
+                        marker and warnings such as going over target.
+   Other hues (blue, violet, red) are gone, so every colour on screen comes from these three. */
+:root{
+  --c60:#F2F5F1;--c60-deep:#E2EAE3;--c30:#1D6B52;--c30-soft:rgba(29,107,82,.10);--c30-mid:rgba(29,107,82,.22);--c30-light:#3F9775;
+  --c10:#C84B26;--c10-strong:#B23E1C;--c10-ink:#ffffff;--c10-soft:rgba(200,75,38,.12);
+  --bg:var(--c60);--card:rgba(255,255,255,.62);--card-strong:rgba(255,255,255,.88);--glass-edge:rgba(255,255,255,.8);
+  --soft:rgba(255,255,255,.6);--line:rgba(29,107,82,.14);--ink:#15241F;--muted:#5E6E67;
+  --accent:var(--c30);--accent2:var(--c30-light);--accent-ink:var(--c30);--accent-soft:var(--c30-soft);
+  --over:var(--c10-strong);--water:var(--c30-light);--head:#10201B;--shadow:0 8px 30px rgba(21,36,31,.09);
+}
+@media(prefers-color-scheme:dark){:root{
+  --c60:#0B1512;--c60-deep:#12201B;--c30:#5CCB9B;--c30-soft:rgba(92,203,155,.12);--c30-mid:rgba(92,203,155,.24);--c30-light:#7FDCB3;
+  --c10:#FF8A65;--c10-strong:#FF9B7A;--c10-ink:#1A0F0A;--c10-soft:rgba(255,138,101,.14);
+  --card:rgba(19,36,31,.58);--card-strong:rgba(19,36,31,.9);--glass-edge:rgba(255,255,255,.08);
+  --soft:rgba(255,255,255,.06);--line:rgba(92,203,155,.14);--ink:#E6F0EB;--muted:#93A89F;--head:#0B1512;--shadow:0 8px 30px rgba(0,0,0,.35);
+}}
+
+/* 60: the base */
+body{background:linear-gradient(180deg,var(--c60),var(--c60-deep)) fixed}
+.backdrop i:nth-child(1){background:radial-gradient(circle,var(--c30-mid),transparent 65%)}
+.backdrop i:nth-child(2){background:radial-gradient(circle,var(--c60-deep),transparent 65%);opacity:.9}
+.backdrop i:nth-child(3){background:radial-gradient(circle,var(--c30-soft),transparent 65%)}
+.tt,.toast{background:rgba(16,32,27,.88)}
+
+/* 30: brand and tracking */
+header h1 .brand{background:none;color:var(--c30)}
+button{background:var(--c30);color:#fff}
+@media(prefers-color-scheme:dark){button{background:var(--c30);color:#0B1512}}
+button.secondary{background:var(--c30-soft);color:var(--ink);border-color:transparent}
+.datenav button{background:var(--c30-soft);border-color:transparent}
+.sumstats div,.tile{background:var(--c30-soft);border-color:transparent}
+.tipline,.note{background:var(--soft)}
+.banner{border:1px solid var(--c30-mid)}
+.macro .track i,.pbar i{background:var(--c30)}
+.dots i.on{background:var(--c30-light);box-shadow:none}
+.chart .ln{stroke:var(--c30)}.chart .pt,.chart .bar{fill:var(--c30)}
+input:focus,select:focus{border-color:var(--c30);box-shadow:0 0 0 4px var(--c30-soft)}
+input:focus,select:focus,button:focus-visible{outline-color:var(--c30)}
+.chips button{background:var(--soft);border-color:var(--line)}
+.tabs button.on{background:var(--c30-soft);color:var(--c30)}
+
+/* 10: actions and highlights only */
+button.green{background:var(--c10);color:var(--c10-ink);box-shadow:0 6px 18px rgba(200,75,38,.28)}
+button.green:hover:not(:disabled){box-shadow:0 8px 24px rgba(200,75,38,.38)}
+.chips button.on,.form .lbl button.on{background:var(--c10);color:var(--c10-ink);border-color:transparent;box-shadow:0 4px 12px rgba(200,75,38,.25)}
+@media(prefers-color-scheme:dark){.chips button.on,.form .lbl button.on{color:var(--c10-ink)}}
+.tabs button.on span{position:relative}
+.tabs button.on::after{content:"";display:block;width:18px;height:3px;border-radius:3px;background:var(--c10);margin:2px auto 0;animation:fade .3s ease}
+button.danger{color:var(--c10-strong)}
+.err{color:var(--c10-strong)}
+.banner#backupBanner{border-color:var(--c10)}
+/* Row-level "Add" buttons repeat down a list, so they use the 30% colour; coral stays for the one main action on screen. */
+.idea button.green{background:var(--c30);color:#fff;box-shadow:none}
+@media(prefers-color-scheme:dark){.idea button.green{color:#0B1512}}

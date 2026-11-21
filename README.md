@@ -35,6 +35,7 @@ A mobile-first calorie, nutrition and weight-loss tracker. It is a static site (
 
 **Look and feel**
 - Frosted-glass cards over a slowly drifting colour background, in light and dark mode
+- Three-colour palette on the 60/30/10 rule: sage mist base (60%), forest green for brand and progress (30%), coral for actions and warnings only (10%)
 - Animated calorie ring, counting numbers and progress bars; cards rise in when a tab opens; dialogs and toasts slide in
 - Motion is switched off when the phone is set to reduce motion
 

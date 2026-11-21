@@ -157,8 +157,8 @@ const RING_C = 2 * Math.PI * 44;
 function drawRing(frac, over, value, label) {
   const el = $('ring');
   if (!el.querySelector('.prog')) el.innerHTML = `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">
-    <defs><linearGradient id="ringGood" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22c55e"/><stop offset="1" stop-color="#14b8a6"/></linearGradient>
-      <linearGradient id="ringOver" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f97316"/><stop offset="1" stop-color="#ef4444"/></linearGradient></defs>
+    <defs><linearGradient id="ringGood" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--c30-light)"/><stop offset="1" style="stop-color:var(--c30)"/></linearGradient>
+      <linearGradient id="ringOver" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--c10)"/><stop offset="1" style="stop-color:var(--c10-strong)"/></linearGradient></defs>
     <circle cx="50" cy="50" r="44" fill="none" stroke="var(--line)" stroke-width="9"/>
     <circle class="prog" cx="50" cy="50" r="44" fill="none" stroke-width="9" stroke-linecap="round" stroke-dasharray="0 ${RING_C}" transform="rotate(-90 50 50)"/></svg>
     <div class="mid"><b>0</b><span></span></div>`;
