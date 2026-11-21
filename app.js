@@ -250,7 +250,7 @@ function renderResults() {
     const seen = new Set();
     const rank = f => { const n = normFood(f.name); return n.startsWith(q) ? 0 : n.includes(q) ? 1 : 2; };   // name matches before alias matches
     const local = data.recents.concat(FOODS).filter(f => hit(f) && !seen.has(f.name + '|' + f.serving) && seen.add(f.name + '|' + f.serving))
-      .map((f, i) => [f, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).slice(0, 30).map(x => x[0]);
+      .map((f, i) => [f, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).slice(0, 80).map(x => x[0]);
     html += local.map(row).join('');
     if (remote && remote.q === q) {
       html += '<p class="listhead">Packaged foods (Open Food Facts)</p>' +

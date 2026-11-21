@@ -661,7 +661,63 @@ const FOOD_ROWS = [
 
   // ── Drinks ──
   ['#drink'],
-  ['Cappuccino', '1 cup', 110, 6, 10, 5, 0, 'coffee'],
+  // hot coffee
+  ['Espresso', '1 shot (30 ml)', 3, 0.1, 0.5, 0.1, 0, 'coffee'],
+  ['Double espresso', '2 shots (60 ml)', 5, 0.2, 1, 0.2, 0, 'doppio coffee'],
+  ['Ristretto', '1 shot', 2, 0.1, 0.3, 0, 0, 'coffee'],
+  ['Americano', '1 cup (350 ml)', 15, 1, 2, 0.3, 0, 'long black coffee'],
+  ['Espresso macchiato', '1 shot with foam', 15, 1, 1.5, 0.6, 0, 'coffee'],
+  ['Cortado', '1 small cup (120 ml)', 60, 3, 4.5, 3.2, 0, 'coffee gibraltar'],
+  ['Flat white', '1 cup (240 ml)', 120, 7, 10, 6, 0, 'coffee'],
+  ['Cafe au lait', '1 cup', 70, 4, 6, 3.5, 0, 'coffee'],
+  ['Café mocha', '1 cup (350 ml)', 290, 10, 38, 11, 2, 'mocha coffee chocolate'],
+  ['White chocolate mocha', '1 cup (350 ml)', 360, 12, 50, 13, 0, 'coffee'],
+  ['Caramel macchiato', '1 cup (350 ml)', 250, 10, 34, 7, 0, 'coffee'],
+  ['Vanilla latte', '1 cup (350 ml)', 220, 10, 30, 7, 0, 'coffee'],
+  ['Caramel latte', '1 cup (350 ml)', 230, 10, 32, 7, 0, 'coffee'],
+  ['Hazelnut latte', '1 cup (350 ml)', 230, 10, 32, 7, 0, 'coffee'],
+  ['Latte, skimmed milk', '1 cup (350 ml)', 100, 10, 14, 0.3, 0, 'skinny coffee'],
+  ['Oat milk latte', '1 cup (350 ml)', 160, 3, 22, 6.5, 1.5, 'coffee vegan'],
+  ['Almond milk latte', '1 cup (350 ml)', 80, 2, 9, 4, 1, 'coffee vegan'],
+  ['Spanish latte', '1 cup (350 ml)', 250, 9, 34, 9, 0, 'coffee condensed milk'],
+  ['Pumpkin spice latte', '1 cup (350 ml)', 300, 10, 44, 9, 0, 'coffee'],
+  ['Café bombón', '1 small glass', 120, 3, 20, 3, 0, 'bombon coffee condensed milk'],
+  ['Coffee with milk, no sugar', '1 cup', 50, 3, 4.5, 2.5, 0, 'instant nescafe'],
+  ['Dalgona coffee', '1 glass', 230, 8, 32, 8, 0, 'whipped coffee'],
+  ['Turkish coffee', '1 small cup, sweetened', 40, 0.3, 9, 0.2, 0, 'greek arabic'],
+  ['Cuban coffee', '1 shot, sweetened', 35, 0.1, 9, 0, 0, 'cafecito cafe cubano'],
+  ['Café de olla', '1 cup', 90, 0.3, 22, 0.1, 0, 'mexican coffee cinnamon'],
+  ['Vietnamese egg coffee', '1 cup', 250, 6, 30, 12, 0, 'ca phe trung'],
+  ['Bulletproof coffee', '1 cup', 230, 0.3, 0, 25, 0, 'butter mct keto'],
+  ['Irish coffee', '1 glass', 220, 1, 12, 8, 0, 'whiskey cream'],
+  ['Affogato', '1 scoop with espresso', 150, 3, 17, 8, 0, 'coffee ice cream dessert'],
+  ['Chai latte', '1 cup (350 ml)', 200, 7, 32, 5, 0, 'tea'],
+  ['Matcha latte', '1 cup (350 ml)', 190, 8, 26, 6, 1, 'green tea'],
+  // cold coffee
+  ['Iced americano', '1 glass', 15, 1, 2.5, 0.2, 0, 'cold coffee black'],
+  ['Iced latte', '1 glass (350 ml)', 130, 7, 11, 6.5, 0, 'cold coffee'],
+  ['Iced mocha', '1 glass (350 ml)', 280, 9, 38, 11, 2, 'cold coffee chocolate'],
+  ['Iced caramel macchiato', '1 glass (350 ml)', 240, 9, 34, 7, 0, 'cold coffee'],
+  ['Iced Spanish latte', '1 glass (350 ml)', 280, 9, 38, 10, 0, 'spanish cold coffee condensed milk'],
+  ['Vietnamese iced coffee', '1 glass (200 ml)', 200, 4.5, 33, 5.5, 0, 'cold coffee ca phe sua da condensed milk'],
+  ['Vietnamese coconut coffee', '1 glass', 300, 3, 40, 15, 1, 'cold coffee ca phe dua condensed milk'],
+  ['Thai iced coffee', '1 glass', 220, 3, 36, 7, 0, 'cold coffee oliang condensed milk'],
+  ['Cold brew, black', '1 glass', 5, 0.2, 0.5, 0, 0, 'cold coffee'],
+  ['Cold brew with milk', '1 glass', 70, 3, 7, 3, 0, 'cold coffee'],
+  ['Sweet cream cold brew', '1 glass', 120, 1, 14, 6.5, 0, 'cold coffee vanilla'],
+  ['Nitro cold brew', '1 glass', 5, 0.2, 0.5, 0, 0, 'cold coffee'],
+  ['Cold coffee, no sugar', '1 glass', 140, 7, 11, 7.5, 0, 'iced'],
+  ['Cold coffee with ice cream', '1 glass', 380, 9, 52, 15, 0, 'cafe frappe iced'],
+  ['Hazelnut cold coffee', '1 glass', 300, 7, 42, 11, 0, 'iced'],
+  ['Coffee frappé', '1 glass (350 ml)', 300, 5, 50, 9, 0, 'frappe frappuccino blended cold'],
+  ['Caramel frappé', '1 glass (350 ml)', 380, 5, 60, 14, 0, 'frappe frappuccino blended cold coffee'],
+  ['Mocha frappé', '1 glass (350 ml)', 400, 6, 62, 14, 1, 'frappe frappuccino blended cold coffee chocolate java chip'],
+  ['Greek frappé', '1 glass', 120, 3, 18, 4, 0, 'frappe nescafe cold coffee'],
+  ['Freddo espresso', '1 glass', 10, 0.3, 2, 0, 0, 'cold coffee greek'],
+  ['Freddo cappuccino', '1 glass', 120, 6, 10, 6, 0, 'cold coffee greek'],
+  ['Shakerato', '1 glass', 30, 0.2, 7, 0, 0, 'cold coffee italian'],
+  ['Espresso tonic', '1 glass', 60, 0, 15, 0, 0, 'cold coffee iced'],
+  ['Cappuccino', '1 cup', 110, 6, 10, 5, 0, 'coffee capuccino'],
   ['Latte', '1 cup', 150, 8, 13, 7, 0, 'coffee'],
   ['Hot chocolate', '1 cup', 200, 8, 28, 7, 2],
   ['Chocolate milkshake', '1 glass', 350, 9, 52, 12, 1],
@@ -674,7 +730,7 @@ const FOOD_ROWS = [
   ['Coffee with milk and sugar', '1 cup', 90, 3, 12, 3.5, 0],
   ['Filter coffee', '1 tumbler', 80, 2.5, 11, 3, 0, 'kaapi'],
   ['Black coffee', '1 cup', 2, 0.3, 0, 0, 0],
-  ['Cold coffee', '1 glass', 220, 6, 30, 8, 0],
+  ['Cold coffee', '1 glass', 220, 6, 30, 8, 0, 'iced'],
   ['Sweet lassi', '1 glass (250 ml)', 220, 7, 32, 7, 0],
   ['Salted lassi', '1 glass (250 ml)', 110, 6, 9, 5.5, 0, 'namkeen'],
   ['Mango lassi', '1 glass (250 ml)', 250, 6, 42, 6.5, 1],
@@ -742,19 +798,20 @@ const FOOD_SPELLINGS = [[/vegetables?|veggies?/g, 'veg'], [/pulav|pulaav|pulaw|p
   [/chapathi|chapatti|chappati|chapaati/g, 'chapati'], [/parantha|parotha|pratha|paratta/g, 'paratha'], [/sabji|subzi|subji|sabzee|sabjee/g, 'sabzi'],
   [/\bdaal\b|\bdhal\b/g, 'dal'], [/panir|panner/g, 'paneer'], [/\bidly\b/g, 'idli'], [/vadai|\bwada\b/g, 'vada'], [/kichdi|khichri|khichadi|kichadi/g, 'khichdi'],
   [/uthappam|uttappam|uttapa\b|uthappa\b/g, 'uttapam'], [/\bdosai\b|\bdosha\b/g, 'dosa'], [/laddoo|laddu/g, 'ladoo'], [/burfi|barfee/g, 'barfi'], [/kabab/g, 'kebab'],
-  [/chhole|cholay/g, 'chole'], [/\bcurd rice\b/g, 'curd rice dahi chawal'], [/sandwhich|sandwitch/g, 'sandwich'], [/omlet|omlette|omelet\b/g, 'omelette']];
+  [/chhole|cholay/g, 'chole'], [/\bcurd rice\b/g, 'curd rice dahi chawal'], [/sandwhich|sandwitch/g, 'sandwich'], [/é/g, 'e'], [/expresso/g, 'espresso'], [/capp?ucc?ino/g, 'cappuccino'], [/frapp?ucc?ino/g, 'frappuccino'],
+  [/\bcoffe\b|\bcofee\b|\bcoffie\b|\bkoffee\b/g, 'coffee'], [/\bice coffee\b/g, 'iced coffee'], [/\bamericano\b/g, 'americano'], [/\bmoca\b|\bmochha\b/g, 'mocha'], [/omlet|omlette|omelet\b/g, 'omelette']];
 const normFood = text => FOOD_SPELLINGS.reduce((t, [from, to]) => t.replace(from, to), String(text).toLowerCase());
 
 // Rows like ['#dal'] mark the category of the rows that follow. Tags are worked out from names, so they are a
 // best effort: they cannot know, for example, whether a home recipe uses ghee.
 const TAG_RULES = {
-  dairy: /basundi|kalakand|cham cham|chhena|falooda|tukda|paneer|curd|dahi|yogurt|milk|doodh|lassi|chaas|raita|cheese|butter|ghee|makhani|malai|cream|khoya|kadhi|\bkheer\b|whey|shake|chai with|coffee with|filter coffee|cold coffee|pizza|white sauce|korma|thandai|tikka masala|mayo|alfredo|latte|cappuccino|hot chocolate|smoothie|custard|cheesecake|tiramisu|caesar|quiche|lasagna|risotto|mac and cheese|quesadilla|pink sauce|granola/,
+  dairy: /rasgulla|cortado|flat white|macchiato|mocha|frapp|affogato|dalgona|au lait|spanish|bomb[oó]n|pumpkin spice|freddo cappuccino|egg coffee|basundi|kalakand|cham cham|chhena|falooda|tukda|paneer|curd|dahi|yogurt|milk|doodh|lassi|chaas|raita|cheese|butter|ghee|makhani|malai|cream|khoya|kadhi|\bkheer\b|whey|shake|chai with|coffee with|filter coffee|cold coffee|pizza|white sauce|korma|thandai|tikka masala|mayo|alfredo|latte|cappuccino|hot chocolate|smoothie|custard|cheesecake|tiramisu|caesar|quiche|lasagna|risotto|mac and cheese|quesadilla|pink sauce|granola/,
   wheat: /dhokli|sheermal|koki|puff|bun maska|haleem|tukda|roti|chapati|paratha|parotta|\bpuri\b|naan|kulcha|\bpav\b|bread|sandwich|burger|pizza|pasta|noodles|momos|roll|frankie|shawarma|biscuit|rusk|khari|cake|upma|semiya|daliya|suji|rava|bhatur|litti|baati|thepla|mathri|samosa|kachori|thalipeeth|puran poli|khakhra|muthia|dabeli|luchi|muesli|spaghetti|lasagna|ravioli|mac and cheese|couscous|quiche|pancake|waffle|quesadilla|taco|burrito|pita|muffin|brownie|doughnut|cookie|\bpie\b|nuggets/,
-  nuts: /salan|bagara|kashmiri|almond|badam|cashew|kaju|walnut|akhrot|pista|peanut|moongphali|chikki|dry fruit|thandai|korma|shahi|malai kofta|muesli/,
+  nuts: /hazelnut|salan|bagara|kashmiri|almond|badam|cashew|kaju|walnut|akhrot|pista|peanut|moongphali|chikki|dry fruit|thandai|korma|shahi|malai kofta|muesli/,
   seafood: /crab|fish|prawn|tuna|salmon/,
   redmeat: /mutton|keema|seekh|shami|beef|lamb|\bham\b|bacon|pepperoni|meatball|bolognese|hot dog/,
   fried: /cutlet|bonda|mangalore buns|pakwan|samosa|kachori|pakora|\bpuri\b|aloo puri|luchi|bhatur|vada|bajji|fries|chips|fried|tikki|\bsev\b|namkeen|chakli|mathri|fafda|spring roll|chicken 65|bhaja|manchurian|chilli|fish fry|nuggets|wings|onion rings|wedges|hash brown|fish and chips|falafel|doughnut|nachos/,
-  alcohol: /beer|whisky|wine/
+  alcohol: /irish coffee|beer|whisky|wine/
 };
 let foodCat = '';
 const FOODS = FOOD_ROWS.filter(r => r[0][0] === '#' ? (foodCat = r[0].slice(1), false) : (r.cat = foodCat, true)).map(r => {
@@ -762,7 +819,7 @@ const FOODS = FOOD_ROWS.filter(r => r[0][0] === '#' ? (foodCat = r[0].slice(1), 
   let has = Object.keys(TAG_RULES).filter(t => TAG_RULES[t].test(t === 'dairy' || t === 'nuts' ? keys : name));
   if ((r.cat === 'bread' || r.cat === 'sandwich') && !has.includes('wheat')) has.push('wheat');
   if (/bajra|jowar|makki|akki|ragi/.test(name)) has = has.filter(t => t !== 'wheat');          // millet, maize and rice rotis
-  if (/peanut butter|soy milk|sol kadhi/.test(name)) has = has.filter(t => t !== 'dairy');
+  if (/peanut butter|soy milk|sol kadhi|oat milk|almond milk|americano|cold brew, black|nitro cold brew|freddo espresso|shakerato|espresso tonic/.test(name)) has = has.filter(t => t !== 'dairy');
   const diet = /crab|chicken|mutton|fish|prawn|keema|kebab|shawarma|tuna|salmon|beef|lamb|\bham\b|bacon|pepperoni|meatball|bolognese|hot dog|sausage/.test(name) ? 'nonveg'
     : /\begg|omelette|cake|mayo|french toast|quiche|waffle|tiramisu|brownie|muffin|doughnut|caesar/.test(name) ? 'egg' : 'veg';
   return { name: r[0], serving: r[1], cal: r[2], protein: r[3], carbs: r[4], fat: r[5], fiber: r[6], keys, cat: r.cat, diet, has };
